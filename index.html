@@ -3,22 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Treino</title>
+    <title>Controle de Treino Avançado com IA</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        primary: '#FFA500',
-                        secondary: '#FFD700',
+                        primary: {
+                            DEFAULT: 'var(--color-primary, #FFA500)',
+                            hover: 'var(--color-primary-hover, #FFC14D)',
+                        },
+                        secondary: {
+                            DEFAULT: 'var(--color-secondary, #FFD700)',
+                        },
+                        gemini: {
+                            DEFAULT: '#4285F4',
+                            hover: '#63a0ff',
+                        },
                         dark: {
-                            100: '#1a1a1a',
-                            200: '#2d2d2d',
-                            300: '#3a3a3a',
-                            400: '#4a4a4a'
-                        }
+                            100: '#121212',
+                            200: '#1e1e1e',
+                            300: '#2a2a2a',
+                            400: '#3a3a3a'
+                        },
                     }
                 }
             }
@@ -26,1402 +36,626 @@
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .tab-active { border-bottom: 2px solid #FFA500; color: #FFA500; }
-        .card-hover:hover { transform: translateY(-2px); transition: all 0.3s ease; }
-        .timer-display { font-family: 'Courier New', monospace; }
-        .pulse-animation { animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        :root {
+            --color-primary: #FFA500;
+            --color-primary-hover: #FFC14D;
+            --color-secondary: #FFD700;
         }
-        .accordion-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-in-out;
-        }
-        .accordion-content.active {
-            max-height: 1000px; /* Aumentado para garantir espaço */
-        }
-        .loading-spinner {
-            border: 3px solid #4a4a4a;
-            border-top: 3px solid #FFA500;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .filter-btn.active {
-            background-color: #FFA500 !important;
-            color: black !important;
-        }
-        .workout-day.expanded {
-            border: 2px solid #FFA500;
-        }
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+        .tab-active { border-bottom: 2px solid var(--color-primary); color: var(--color-primary); }
+        .card-hover:hover { transform: translateY(-3px); transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+        .loading-spinner { border: 3px solid #4a4a4a; border-top: 3px solid var(--color-primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .pr-badge { animation: pulse-badge 1.5s infinite; }
+        @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
     </style>
 </head>
-<body class="bg-dark-100 text-white min-h-screen">
-    <header class="bg-dark-200 shadow-lg">
-        <div class="container mx-auto px-4 py-4">
+<body class="bg-dark-100 text-gray-200 min-h-screen">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-dark-100 bg-opacity-90 flex flex-col items-center justify-center z-[100]">
+        <div class="loading-spinner !w-16 !h-16 !border-4"></div>
+        <p class="mt-4 text-lg text-gray-300">A carregar os seus dados...</p>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-dark-200 shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14 4.14 5.57 2 7.71 3.43 9.14 2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22 14.86 20.57 16.29 22 17.71 20.57 19.14 22 20.57 20.57 22 19.14 20.57 17.71 22 16.29 20.57 14.86z"/>
-                        </svg>
+                        <svg class="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14 4.14 5.57 2 7.71 3.43 9.14 2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22 14.86 20.57 16.29 22 17.71 20.57 19.14 22 20.57 20.57 22 19.14 20.57 17.71 22 16.29 20.57 14.86z"/></svg>
                     </div>
-                    <h1 class="text-2xl font-bold text-primary">Controle de Treino</h1>
+                    <h1 class="text-2xl font-bold text-primary">FitTrack Pro</h1>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <button onclick="openColorChat()" class="bg-dark-300 hover:bg-dark-400 p-2 rounded-lg transition-colors" title="Mudar cores do tema">
-                        🎨
-                    </button>
-                    <div class="flex space-x-1 bg-dark-300 rounded-lg p-1">
-                        <button onclick="switchTab('treino')" id="tab-treino" class="tab-button px-4 py-2 rounded-md transition-all duration-300 tab-active">
-                            Treino
-                        </button>
-                        <button onclick="switchTab('dieta')" id="tab-dieta" class="tab-button px-4 py-2 rounded-md transition-all duration-300">
-                            Dieta
-                        </button>
-                        <button onclick="switchTab('treinos')" id="tab-treinos" class="tab-button px-4 py-2 rounded-md transition-all duration-300">
-                            Treinos
-                        </button>
-                        <button onclick="switchTab('corpo')" id="tab-corpo" class="tab-button px-4 py-2 rounded-md transition-all duration-300">
-                            Corpo
-                        </button>
-                    </div>
+                <div class="flex items-center space-x-1 bg-dark-300 rounded-lg p-1">
+                    <button onclick="UI.switchTab('treino')" id="tab-treino" class="tab-button px-4 py-2 rounded-md transition-all duration-300">Treino</button>
+                    <button onclick="UI.switchTab('dieta')" id="tab-dieta" class="tab-button px-4 py-2 rounded-md transition-all duration-300">Dieta</button>
+                    <button onclick="UI.switchTab('corpo')" id="tab-corpo" class="tab-button px-4 py-2 rounded-md transition-all duration-300">Corpo</button>
+                    <button onclick="UI.switchTab('progresso')" id="tab-progresso" class="tab-button px-4 py-2 rounded-md transition-all duration-300">Progresso</button>
                 </div>
             </div>
         </div>
     </header>
 
+    <!-- Main Content -->
     <main class="container mx-auto px-4 py-6">
+        <!-- Aba Treino -->
         <div id="content-treino" class="tab-content">
-            <div class="mb-6">
-                <h2 class="text-3xl font-bold mb-6 text-center">📅 Plano de Treino ABCDE</h2>
-                
-                <div class="bg-dark-200 rounded-lg p-4 mb-6">
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div class="flex-1">
-                            <h3 class="text-lg font-bold text-primary mb-2">📅 Selecionar Dia de Treino</h3>
-                            <select id="day-selector" class="w-full bg-dark-300 text-white border border-dark-400 rounded-lg px-4 py-2 focus:outline-none focus:border-primary">
-                                <option value="auto">🤖 Sugestão Automática</option>
-                                <option value="A">💪 Dia A - Upper A (Peito, Ombros, Tríceps)</option>
-                                <option value="B">🦵 Dia B - Lower A (Quadríceps, Glúteos)</option>
-                                <option value="C">🔄 Dia C - Core/Recuperação</option>
-                                <option value="D">🏋️‍♀️ Dia D - Upper B (Costas, Bíceps)</option>
-                                <option value="E">🍑 Dia E - Lower B (Glúteos, Posterior)</option>
-                                <option value="rest">🛌 Dia de Descanso</option>
-                            </select>
-                        </div>
-                        <div class="flex-1 text-center">
-                            <div id="suggested-workout" class="bg-primary text-black rounded-lg p-3">
-                                <div class="font-bold">Treino Sugerido Hoje:</div>
-                                <div id="suggested-workout-text" class="text-sm mt-1">Carregando...</div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center">
+                 <button onclick="AICoach.openModal('generate-plan')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg mb-4 transition-colors">
+                    ✨ Gerar Novo Plano de Treino com IA
+                </button>
+                <h3 class="text-lg font-bold text-primary mb-3">⏱️ Cronómetro da Sessão</h3>
+                <div id="session-timer" class="text-4xl font-bold text-secondary mb-4 timer-display">00:00:00</div>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="sessionTimer.start()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">▶️ Iniciar</button>
+                    <button onclick="sessionTimer.pause()" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors">⏸️ Pausar</button>
+                    <button onclick="sessionTimer.reset()" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">🔄 Resetar</button>
                 </div>
-
-                <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center">
-                    <h3 class="text-lg font-bold text-primary mb-3">⏱️ Cronômetro da Sessão</h3>
-                    <div id="session-timer" class="text-4xl font-bold text-secondary mb-4">00:00:00</div>
-                    <div class="flex justify-center space-x-4">
-                        <button onclick="startSessionTimer()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
-                            ▶️ Iniciar
-                        </button>
-                        <button onclick="pauseSessionTimer()" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
-                            ⏸️ Pausar
-                        </button>
-                        <button onclick="resetSessionTimer()" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
-                            🔄 Reset
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <button onclick="openAIModal('criar-treino')" class="bg-primary hover:bg-orange-600 text-black font-semibold py-3 px-4 rounded-lg transition-all duration-300 card-hover">
-                        🤖 Criar/Atualizar Treino
-                    </button>
-                    <button onclick="openAIModal('otimizar-treino')" class="bg-secondary hover:bg-yellow-600 text-black font-semibold py-3 px-4 rounded-lg transition-all duration-300 card-hover">
-                        ⚡ Otimizar Treino
-                    </button>
-                    <button onclick="openAIModal('substituir-exercicio')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 card-hover">
-                        🔄 Substituir Exercício
-                    </button>
-                    <button onclick="openAIModal('dicas-tecnicas')" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 card-hover">
-                        💡 Dicas Técnicas
-                    </button>
-                </div>
-
-                <div class="bg-dark-200 rounded-lg p-4 mb-6">
-                    <h3 class="text-xl font-bold mb-4 text-center text-primary">📅 Semana Sugerida</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2 text-sm">
-                        <div class="bg-dark-300 p-3 rounded-lg text-center">
-                            <div class="font-semibold text-primary">Segunda</div>
-                            <div>Upper A + HIIT</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg text-center">
-                            <div class="font-semibold text-primary">Terça</div>
-                            <div>Lower A + LISS</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg text-center">
-                            <div class="font-semibold text-green-500">Quarta</div>
-                            <div>Core + Corrida</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg text-center">
-                            <div class="font-semibold text-primary">Quinta</div>
-                            <div>Upper B + HIIT</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg text-center">
-                            <div class="font-semibold text-primary">Sexta</div>
-                            <div>Lower B + LISS</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg text-center">
-                            <div class="font-semibold text-blue-500">Sábado</div>
-                            <div>Mobilidade</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg text-center">
-                            <div class="font-semibold text-red-500">Domingo</div>
-                            <div>OFF Total</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('day-a')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-xl font-bold text-primary">💪 Dia A — Upper A</h3>
-                                <p class="text-gray-400">Peito, Ombros, Tríceps + Cardio HIIT</p>
-                            </div>
-                            <span id="arrow-day-a" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-day-a" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <div class="space-y-3">
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Supino reto com barra — 4x6-10</span>
-                                            <button onclick="startRestTimer(90)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 90s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Supino inclinado com halteres — 4x8-12</span>
-                                            <button onclick="startRestTimer(75)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 75s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Desenvolvimento com halteres — 4x8-12</span>
-                                            <button onclick="startRestTimer(75)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 75s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Crucifixo inverso — 3x12-15</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Tríceps testa com barra EZ — 3x10-15</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Tríceps corda ou crossover — 3x12-15</span>
-                                            <button onclick="startRestTimer(45)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 45s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-red-900 p-3 rounded-lg">
-                                        <span class="font-semibold text-red-300">🔥 HIIT Cardio: 6x 1 min forte / 2 min leve</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('day-b')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-xl font-bold text-primary">🦵 Dia B — Lower A</h3>
-                                <p class="text-gray-400">Quadríceps, Glúteos, Isquiotibiais + LISS</p>
-                            </div>
-                            <span id="arrow-day-b" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-day-b" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <div class="space-y-3">
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Agachamento livre ou Leg Press — 4x6-10</span>
-                                            <button onclick="startRestTimer(120)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 120s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Cadeira extensora — 3-4x10-15</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Mesa flexora — 3-4x10-15</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Hip thrust — 3-4x8-12</span>
-                                            <button onclick="startRestTimer(75)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 75s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Cadeira abdutora — 3x12-15</span>
-                                            <button onclick="startRestTimer(45)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 45s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Panturrilha — 4x15-20</span>
-                                            <button onclick="startRestTimer(45)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 45s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-blue-900 p-3 rounded-lg">
-                                        <span class="font-semibold text-blue-300">🚶 LISS Cardio: 25-35 min leve</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('day-c')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-xl font-bold text-green-500">🔄 Dia C — Core/Recuperação</h3>
-                                <p class="text-gray-400">Descanso Ativo ou Core + Corrida leve</p>
-                            </div>
-                            <span id="arrow-day-c" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-day-c" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <div class="space-y-3">
-                                    <div class="exercise-item bg-green-900 p-3 rounded-lg">
-                                        <span class="font-semibold text-green-300">🏃 Corrida leve: 4-5 km ou alternativa de baixo impacto</span>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Prancha — 3x30-60s</span>
-                                            <button onclick="startRestTimer(30)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 30s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Elevação de pernas — 3x15-20</span>
-                                            <button onclick="startRestTimer(30)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 30s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Crunch — 3x15-20</span>
-                                            <button onclick="startRestTimer(30)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 30s
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('day-d')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-xl font-bold text-primary">🏋️‍♀️ Dia D — Upper B</h3>
-                                <p class="text-gray-400">Costas, Ombros Posteriores, Bíceps + Cardio</p>
-                            </div>
-                            <span id="arrow-day-d" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-day-d" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <div class="space-y-3">
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Remada curvada — 4x6-10</span>
-                                            <button onclick="startRestTimer(90)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 90s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Puxada alta — 4x8-12</span>
-                                            <button onclick="startRestTimer(75)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 75s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Remada baixa — 3-4x10-15</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Elevação lateral — 3-4x12-15</span>
-                                            <button onclick="startRestTimer(45)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 45s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Rosca direta — 3x8-12</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Rosca martelo — 3x10-15</span>
-                                            <button onclick="startRestTimer(45)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 45s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-purple-900 p-3 rounded-lg">
-                                        <span class="font-semibold text-purple-300">🔥 Cardio: HIIT ou LISS</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('day-e')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-xl font-bold text-primary">🍑 Dia E — Lower B</h3>
-                                <p class="text-gray-400">Glúteos, Posterior, Panturrilhas + LISS</p>
-                            </div>
-                            <span id="arrow-day-e" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-day-e" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <div class="space-y-3">
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Stiff — 4x6-10</span>
-                                            <button onclick="startRestTimer(90)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 90s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Passada ou agachamento búlgaro — 3-4x8-12 por perna</span>
-                                            <button onclick="startRestTimer(75)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 75s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Leg press (pés altos) — 3x10-15</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Hip thrust unilateral — 3x12-15</span>
-                                            <button onclick="startRestTimer(60)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 60s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Cadeira flexora — 3-4x10-15</span>
-                                            <button onclick="startRestTimer(45)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 45s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-dark-300 p-3 rounded-lg">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold">Panturrilha — 4x15-20</span>
-                                            <button onclick="startRestTimer(45)" class="bg-primary text-black px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
-                                                ⏱️ 45s
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="exercise-item bg-blue-900 p-3 rounded-lg">
-                                        <span class="font-semibold text-blue-300">🚶 LISS Cardio: 25-35 min leve</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('day-saturday')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-xl font-bold text-blue-500">🧘 Sábado — Mobilidade / Corrida</h3>
-                                <p class="text-gray-400">Corrida leve ou alongamentos profundos</p>
-                            </div>
-                            <span id="arrow-day-saturday" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-day-saturday" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <div class="space-y-3">
-                                    <div class="exercise-item bg-blue-900 p-3 rounded-lg">
-                                        <span class="font-semibold text-blue-300">🏃 Corrida leve (5-6 km) ou</span>
-                                    </div>
-                                    <div class="exercise-item bg-blue-900 p-3 rounded-lg">
-                                        <span class="font-semibold text-blue-300">🧘 Alongamentos profundos, liberação miofascial, core + caminhada</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <div class="p-4 text-center">
-                            <h3 class="text-xl font-bold text-red-500">🛌 Domingo — OFF TOTAL</h3>
-                            <p class="text-gray-400 mt-2">Descanso completo para recuperação</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="rest-timer" class="fixed bottom-4 right-4 bg-primary text-black p-4 rounded-lg shadow-lg hidden">
-                    <div class="text-center">
-                        <div class="text-sm font-semibold">Descanso</div>
-                        <div id="rest-time" class="text-2xl font-bold timer-display">00:00</div>
-                        <button onclick="stopRestTimer()" class="mt-2 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors">
-                            Parar
-                        </button>
-                    </div>
-                </div>
+            </div>
+            
+            <div id="workout-plan-container" class="space-y-4">
+                <!-- O plano de treino será renderizado aqui pelo JavaScript -->
             </div>
         </div>
 
+        <!-- Aba Dieta -->
         <div id="content-dieta" class="tab-content hidden">
-            <div class="mb-6">
-                <h2 class="text-3xl font-bold mb-6 text-center">🥗 Plano Alimentar</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <button onclick="openAIModal('analisar-refeicao')" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 card-hover">
-                        🔍 Analisar Refeição
-                    </button>
-                    <button onclick="openAIModal('gerar-receitas')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 card-hover">
-                        👨‍🍳 Gerar Receitas
-                    </button>
-                    <button onclick="openAIModal('adaptacoes-alimentares')" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 card-hover">
-                        ⚡ Adaptações Alimentares
-                    </button>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('breakfast')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-lg font-bold text-primary">🌅 Café da Manhã</h3>
-                                <p class="text-gray-400 text-sm">~450 kcal | 25g proteína</p>
-                            </div>
-                            <span id="arrow-breakfast" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-breakfast" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <ul class="space-y-2 text-sm">
-                                    <li>• 2 ovos mexidos</li>
-                                    <li>• 1 fatia de pão integral</li>
-                                    <li>• 1 banana</li>
-                                    <li>• 200ml de leite desnatado</li>
-                                    <li>• 1 colher de azeite</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('morning-snack')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-lg font-bold text-primary">🥜 Lanche da Manhã</h3>
-                                <p class="text-gray-400 text-sm">~200 kcal | 15g proteína</p>
-                            </div>
-                            <span id="arrow-morning-snack" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-morning-snack" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <ul class="space-y-2 text-sm">
-                                    <li>• 1 iogurte grego natural</li>
-                                    <li>• 1 colher de granola</li>
-                                    <li>• Frutas vermelhas</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('lunch')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-lg font-bold text-primary">🍽️ Almoço</h3>
-                                <p class="text-gray-400 text-sm">~550 kcal | 35g proteína</p>
-                            </div>
-                            <span id="arrow-lunch" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-lunch" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <ul class="space-y-2 text-sm">
-                                    <li>• 150g peito de frango grelhado</li>
-                                    <li>• 100g arroz integral</li>
-                                    <li>• Salada verde variada</li>
-                                    <li>• 1 colher de azeite</li>
-                                    <li>• Legumes refogados</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('afternoon-snack')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-lg font-bold text-primary">🥤 Lanche da Tarde</h3>
-                                <p class="text-gray-400 text-sm">~250 kcal | 25g proteína</p>
-                            </div>
-                            <span id="arrow-afternoon-snack" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-afternoon-snack" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <ul class="space-y-2 text-sm">
-                                    <li>• Whey protein (30g)</li>
-                                    <li>• 1 banana</li>
-                                    <li>• 200ml água</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('dinner')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-lg font-bold text-primary">🌙 Jantar</h3>
-                                <p class="text-gray-400 text-sm">~480 kcal | 30g proteína</p>
-                            </div>
-                            <span id="arrow-dinner" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-dinner" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <ul class="space-y-2 text-sm">
-                                    <li>• 120g salmão grelhado</li>
-                                    <li>• Batata doce assada (100g)</li>
-                                    <li>• Brócolis no vapor</li>
-                                    <li>• Salada de folhas verdes</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg overflow-hidden card-hover">
-                        <button onclick="toggleAccordion('supper')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
-                            <div>
-                                <h3 class="text-lg font-bold text-primary">🌜 Ceia</h3>
-                                <p class="text-gray-400 text-sm">~220 kcal | 18g proteína</p>
-                            </div>
-                            <span id="arrow-supper" class="text-2xl transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="content-supper" class="accordion-content">
-                            <div class="p-4 border-t border-dark-300">
-                                <ul class="space-y-2 text-sm">
-                                    <li>• 200g iogurte natural</li>
-                                    <li>• 1 colher de pasta de amendoim</li>
-                                    <li>• Canela em pó</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-6 bg-dark-200 rounded-lg p-4">
-                    <h3 class="text-lg font-bold text-center text-primary mb-4">📊 Resumo Nutricional do Dia</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                        <div class="bg-dark-300 p-3 rounded-lg">
-                            <div class="text-2xl font-bold text-secondary">2150</div>
-                            <div class="text-sm text-gray-400">Calorias</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg">
-                            <div class="text-2xl font-bold text-green-500">148g</div>
-                            <div class="text-sm text-gray-400">Proteínas</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg">
-                            <div class="text-2xl font-bold text-blue-500">220g</div>
-                            <div class="text-sm text-gray-400">Carboidratos</div>
-                        </div>
-                        <div class="bg-dark-300 p-3 rounded-lg">
-                            <div class="text-2xl font-bold text-yellow-500">75g</div>
-                            <div class="text-sm text-gray-400">Gorduras</div>
-                        </div>
-                    </div>
-                </div>
+            <h2 class="text-3xl font-bold mb-6 text-center text-primary">🥗 Plano Alimentar</h2>
+            <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center">
+                 <button onclick="AICoach.openModal('analyze-meal')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg mb-4 transition-colors">
+                    🥗 Analisar Refeição com IA
+                </button>
+            </div>
+            <div id="diet-plan-container" class="space-y-4">
+                 <!-- O plano de dieta será renderizado aqui -->
             </div>
         </div>
 
-        <div id="content-treinos" class="tab-content hidden">
-            <div class="mb-6">
-                <h2 class="text-3xl font-bold mb-6 text-center">📊 Estatísticas de Treinos</h2>
-                
-                <div class="bg-dark-200 rounded-lg p-4 mb-6">
-                    <h3 class="text-lg font-bold text-primary mb-4">🔍 Filtros</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="filterStats('week')" id="filter-week" class="filter-btn bg-primary text-black px-4 py-2 rounded-lg font-semibold transition-colors">
-                            Semana
-                        </button>
-                        <button onclick="filterStats('month')" id="filter-month" class="filter-btn bg-dark-300 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                            Mês
-                        </button>
-                        <button onclick="filterStats('year')" id="filter-year" class="filter-btn bg-dark-300 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                            Ano
-                        </button>
-                        <button onclick="filterStats('total')" id="filter-total" class="filter-btn bg-dark-300 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                            Total
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-dark-200 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-primary" id="total-sessions">12</div>
-                        <div class="text-sm text-gray-400">Sessões de Treino</div>
-                    </div>
-                    <div class="bg-dark-200 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-secondary" id="total-time">18:45:30</div>
-                        <div class="text-sm text-gray-400">Tempo Total</div>
-                    </div>
-                    <div class="bg-dark-200 rounded-lg p-4 text-center">
-                        <div class="text-3xl font-bold text-green-500" id="avg-duration">1:33:45</div>
-                        <div class="text-sm text-gray-400">Duração Média</div>
-                    </div>
-                </div>
-
-                <div class="bg-dark-200 rounded-lg p-4 mb-6">
-                    <h3 class="text-lg font-bold text-primary mb-4">📈 Treinos por Semana</h3>
-                    <div class="h-64 flex items-end justify-between space-x-2" id="weekly-chart">
-                        </div>
-                </div>
-
-                <div class="bg-dark-200 rounded-lg p-4">
-                    <h3 class="text-lg font-bold text-primary mb-4">📋 Histórico de Sessões</h3>
-                    <div class="space-y-3" id="session-history">
-                        </div>
-                </div>
-            </div>
-        </div>
-
+        <!-- Aba Corpo -->
         <div id="content-corpo" class="tab-content hidden">
-            <div class="mb-6">
-                <h2 class="text-3xl font-bold mb-6 text-center">🏃‍♂️ Progresso Corporal</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-dark-200 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-primary mb-2">⚖️ Peso Atual</div>
-                        <div class="flex items-center justify-center space-x-2">
-                            <button onclick="adjustWeight(-0.1)" class="bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-full flex items-center justify-center">➖</button>
-                            <input type="number" id="current-weight-corpo" value="75.5" step="0.1" class="bg-dark-300 text-white text-center w-20 py-1 rounded border-none focus:outline-none focus:ring-2 focus:ring-primary">
-                            <button onclick="adjustWeight(0.1)" class="bg-green-600 hover:bg-green-700 text-white w-8 h-8 rounded-full flex items-center justify-center">➕</button>
-                        </div>
-                        <div class="text-sm text-gray-400 mt-2">kg</div>
-                        <button onclick="saveWeight()" class="bg-primary hover:bg-orange-600 text-black font-semibold py-1 px-3 rounded-lg mt-2 text-sm">
-                            💾 Salvar Peso
-                        </button>
+             <h2 class="text-3xl font-bold mb-6 text-center text-primary">🏃 Progresso Corporal</h2>
+             <div class="bg-dark-200 rounded-lg p-6 card-hover">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div>
+                        <label for="weight-input" class="block text-sm font-medium text-gray-400 mb-1">Peso Atual (kg)</label>
+                        <input type="number" id="weight-input" class="w-full bg-dark-300 text-white rounded-lg p-2 border-2 border-dark-400 focus:border-primary outline-none" placeholder="Ex: 75.5">
                     </div>
-
-                    <div class="bg-dark-200 rounded-lg p-4 text-center">
-                        <div class="text-lg font-bold text-primary mb-2">📏 Circunferência Abdominal</div>
-                        <input type="number" id="waist-measurement-corpo" placeholder="Ex: 85" class="bg-dark-300 text-white text-center w-full py-2 rounded border-none focus:outline-none focus:ring-2 focus:ring-primary mb-2">
-                        <div class="text-sm text-gray-400 mb-2">cm</div>
-                        <button onclick="saveWaistMeasurement()" class="bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-1 px-3 rounded-lg text-sm">
-                            💾 Salvar Medida
-                        </button>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg p-4 text-center">
-                        <div class="text-lg font-bold text-primary mb-2">📊 Percentual de Gordura</div>
-                        <input type="number" id="body-fat" placeholder="Ex: 15" step="0.1" class="bg-dark-300 text-white text-center w-full py-2 rounded border-none focus:outline-none focus:ring-2 focus:ring-primary mb-2">
-                        <div class="text-sm text-gray-400 mb-2">%</div>
-                        <button onclick="saveBodyFat()" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1 px-3 rounded-lg text-sm">
-                            💾 Salvar
-                        </button>
-                    </div>
-
-                    <div class="bg-dark-200 rounded-lg p-4 text-center">
-                        <div class="text-lg font-bold text-primary mb-2">🎯 Meta de Peso</div>
-                        <input type="number" id="weight-goal" placeholder="Ex: 80" step="0.1" class="bg-dark-300 text-white text-center w-full py-2 rounded border-none focus:outline-none focus:ring-2 focus:ring-primary mb-2">
-                        <div class="text-sm text-gray-400 mb-2">kg</div>
-                        <button onclick="saveWeightGoal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-lg text-sm">
-                            💾 Definir Meta
-                        </button>
-                    </div>
+                     <button onclick="Workout.saveWeight()" class="w-full bg-primary hover:bg-primary-hover text-black font-bold py-2 rounded-lg">💾 Guardar Peso</button>
                 </div>
+             </div>
+        </div>
 
-                <div class="bg-dark-200 rounded-lg p-4 mb-6">
-                    <h3 class="text-lg font-bold text-primary mb-4">🧮 Calculadora IMC</h3>
-                    <div class="flex flex-col md:flex-row gap-4 items-end">
-                        <div class="flex-1">
-                            <label class="block text-sm text-gray-400 mb-1">Altura (cm)</label>
-                            <input type="number" id="height-input-corpo" placeholder="Ex: 175" class="w-full bg-dark-300 text-white py-2 px-3 rounded border-none focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <button onclick="calculateIMC()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg">
-                            📊 Calcular IMC
-                        </button>
-                    </div>
-                    <div id="imc-result-corpo" class="mt-4 p-3 bg-dark-300 rounded-lg hidden">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-primary" id="imc-value-corpo">--</div>
-                            <div class="text-sm text-gray-400" id="imc-category-corpo">--</div>
-                        </div>
-                    </div>
+        <!-- Aba Progresso -->
+        <div id="content-progresso" class="tab-content hidden">
+            <h2 class="text-3xl font-bold mb-6 text-center text-primary">📈 O seu Progresso</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-dark-200 p-4 rounded-lg card-hover">
+                    <h3 class="text-xl font-bold text-secondary mb-4">⚖️ Histórico de Peso</h3>
+                    <canvas id="weight-chart"></canvas>
                 </div>
-
-                <div class="bg-dark-200 rounded-lg p-4 mb-6">
-                    <h3 class="text-lg font-bold text-primary mb-4">📈 Histórico de Peso</h3>
-                    <div class="h-64 flex items-end justify-between space-x-1" id="weight-chart">
-                        </div>
-                </div>
-
-                <div class="bg-dark-200 rounded-lg p-4">
-                    <h3 class="text-lg font-bold text-primary mb-4">🎯 Progresso Geral</h3>
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span>Peso perdido/ganho:</span>
-                            <span id="weight-progress" class="font-bold text-secondary">+2.5 kg</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Progresso para meta:</span>
-                            <span id="goal-progress" class="font-bold text-green-500">60%</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Tempo até meta:</span>
-                            <span id="time-to-goal" class="font-bold text-blue-500">8 semanas</span>
-                        </div>
-                    </div>
+                <div class="bg-dark-200 p-4 rounded-lg card-hover">
+                    <h3 class="text-xl font-bold text-secondary mb-4">🏋️‍♂️ Volume de Treino (Total)</h3>
+                    <canvas id="volume-chart"></canvas>
                 </div>
             </div>
         </div>
     </main>
 
-    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-dark-200 rounded-lg p-6 max-w-md w-full mx-4 max-h-96 overflow-y-auto">
+    <!-- Modals -->
+    <div id="welcome-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-dark-200 rounded-lg p-6 max-w-lg w-full mx-4 text-center">
+            <h2 class="text-2xl font-bold text-primary mb-4">Bem-vindo(a) ao FitTrack Pro!</h2>
+            <p class="text-gray-300 mb-6">O seu progresso será guardado automaticamente. O seu ID de utilizador é: <br><strong id="user-id-display" class="text-secondary text-sm break-all"></strong></p>
+            <button onclick="UI.closeModal('welcome-modal')" class="bg-primary hover:bg-primary-hover text-black font-semibold px-6 py-2 rounded-lg transition-colors">Começar!</button>
+        </div>
+    </div>
+
+    <div id="gemini-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-dark-200 rounded-lg p-6 max-w-2xl w-full mx-4">
             <div class="flex justify-between items-center mb-4">
-                <h3 id="modal-title" class="text-xl font-bold text-primary"></h3>
-                <button onclick="closeAIModal()" class="text-gray-400 hover:text-white text-2xl">×</button>
+                <h3 id="gemini-modal-title" class="text-xl font-bold text-gemini"></h3>
+                <button onclick="UI.closeModal('gemini-modal')" class="text-gray-400 hover:text-white text-2xl">×</button>
             </div>
-            <div id="modal-content" class="mb-4">
-                </div>
-            <div id="modal-response" class="hidden">
-                <div class="bg-dark-300 rounded-lg p-4 mb-4">
-                    <h4 class="font-semibold text-secondary mb-2">🤖 Resposta da IA:</h4>
-                    <div id="ai-response-text" class="text-sm"></div>
-                </div>
+            <div id="gemini-modal-content"></div>
+            <div id="gemini-modal-response" class="mt-4 p-4 bg-dark-300 rounded-lg max-h-64 overflow-y-auto hidden">
+                 <div id="gemini-response-text" class="text-gray-300 whitespace-pre-wrap"></div>
             </div>
-            <div class="flex justify-end space-x-2">
-                <button onclick="closeAIModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Fechar
-                </button>
-                <button id="modal-action-btn" onclick="processAIRequest()" class="bg-primary hover:bg-orange-600 text-black font-semibold px-4 py-2 rounded-lg transition-colors">
-                    <span id="btn-text">Processar</span>
-                    <div id="btn-loading" class="loading-spinner hidden inline-block ml-2"></div>
+            <div class="flex justify-end mt-6">
+                <button id="gemini-modal-action-btn" class="bg-gemini hover:bg-gemini-hover text-white font-semibold px-6 py-2 rounded-lg transition-colors flex items-center gap-2">
+                    <span id="gemini-btn-text">Processar</span>
+                    <div id="gemini-btn-loading" class="loading-spinner !border-t-white hidden"></div>
                 </button>
             </div>
         </div>
     </div>
+    
+    <div id="notification-container" class="fixed bottom-5 right-5 z-[99] space-y-3"></div>
 
-    <div id="color-chat-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-dark-200 rounded-lg p-6 max-w-md w-full mx-4 max-h-96 overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-primary">🎨 Personalizar Cores</h3>
-                <button onclick="closeColorChat()" class="text-gray-400 hover:text-white text-2xl">×</button>
-            </div>
-            <div class="space-y-4">
-                <p class="text-gray-400 text-sm">Escolha uma combinação de cores para personalizar seu tema:</p>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="changeThemeColors('#FFA500', '#FFD700')" class="bg-gradient-to-r from-orange-500 to-yellow-500 p-3 rounded-lg text-black font-semibold hover:opacity-80 transition-opacity">
-                        🔥 Laranja/Amarelo (Padrão)
-                    </button>
-                    <button onclick="changeThemeColors('#3B82F6', '#60A5FA')" class="bg-gradient-to-r from-blue-600 to-blue-400 p-3 rounded-lg text-white font-semibold hover:opacity-80 transition-opacity">
-                        💙 Azul Clássico
-                    </button>
-                    <button onclick="changeThemeColors('#10B981', '#34D399')" class="bg-gradient-to-r from-green-600 to-green-400 p-3 rounded-lg text-white font-semibold hover:opacity-80 transition-opacity">
-                        💚 Verde Energia
-                    </button>
-                    <button onclick="changeThemeColors('#8B5CF6', '#A78BFA')" class="bg-gradient-to-r from-purple-600 to-purple-400 p-3 rounded-lg text-white font-semibold hover:opacity-80 transition-opacity">
-                        💜 Roxo Místico
-                    </button>
-                    <button onclick="changeThemeColors('#EF4444', '#F87171')" class="bg-gradient-to-r from-red-600 to-red-400 p-3 rounded-lg text-white font-semibold hover:opacity-80 transition-opacity">
-                        ❤️ Vermelho Intenso
-                    </button>
-                    <button onclick="changeThemeColors('#F59E0B', '#FBBF24')" class="bg-gradient-to-r from-amber-600 to-amber-400 p-3 rounded-lg text-black font-semibold hover:opacity-80 transition-opacity">
-                        🌟 Dourado Premium
-                    </button>
-                </div>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-                <div class="border-t border-dark-300 pt-4">
-                    <p class="text-sm text-gray-400 mb-3">Ou escolha suas próprias cores:</p>
-                    <div class="flex space-x-3">
-                        <div class="flex-1">
-                            <label class="block text-xs text-gray-400 mb-1">Cor Primária</label>
-                            <input type="color" id="primary-color" value="#FFA500" class="w-full h-10 rounded border-2 border-dark-300 bg-dark-300">
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-xs text-gray-400 mb-1">Cor Secundária</label>
-                            <input type="color" id="secondary-color" value="#FFD700" class="w-full h-10 rounded border-2 border-dark-300 bg-dark-300">
-                        </div>
-                        <button onclick="applyCustomColors()" class="bg-primary hover:bg-orange-600 text-black font-semibold px-4 py-2 rounded-lg transition-colors mt-5">
-                            Aplicar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        const AppState = { user: null, db: null, auth: null, appId: null, userData: null, unsubscribe: null, charts: { weightChart: null, volumeChart: null } };
 
-    <script>
-        // Variáveis globais
-        let currentTab = 'treino';
-        let sessionTimerInterval = null;
-        let sessionStartTime = null;
-        let sessionPaused = false;
-        let sessionElapsedTime = 0;
-        let restTimerInterval = null;
-        let restEndTime = null;
-        let currentAIContext = '';
-        let daysTrained = 42; // Exemplo inicial
+        const Data = {
+            async init() {
+                try {
+                    const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+                    const firebaseConfig = JSON.parse(firebaseConfigString);
+                    AppState.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-         // Função para alternar entre abas
-        function switchTab(tabName) {
-            // Remove a classe ativa de todos os botões de aba
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.classList.remove('tab-active');
-            });
-            
-            // Esconde todos os conteúdos de aba
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-            
-            // Adiciona a classe ativa ao botão clicado e mostra o conteúdo correspondente
-            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
-            document.getElementById(`content-${tabName}`).classList.remove('hidden');
-            
-            // Atualiza a aba atual
-            currentTab = tabName;
+                    if (!firebaseConfig.apiKey) {
+                        UI.showNotification("Configuração do Firebase inválida.", "error");
+                        UI.hideLoading();
+                        return;
+                    }
 
-            // Inicializa funcionalidades específicas da aba
-            if (tabName === 'treino') {
-                initWorkoutSuggestion();
-            } else if (tabName === 'treinos') {
-                initWorkoutStats();
-            } else if (tabName === 'corpo') {
-                initBodyProgress();
-            }
-        }
-
-        // Funções de Sugestão de Treino
-        function initWorkoutSuggestion() {
-            updateWorkoutSuggestion();
-            
-            const daySelector = document.getElementById('day-selector');
-            if (daySelector) {
-                daySelector.addEventListener('change', function() {
-                    if (this.value === 'auto') {
-                        updateWorkoutSuggestion();
+                    const app = initializeApp(firebaseConfig);
+                    AppState.auth = getAuth(app);
+                    AppState.db = getFirestore(app);
+                    this.handleAuthentication();
+                } catch (error) {
+                    console.error("Firebase Init Error:", error);
+                    UI.showNotification("Erro ao conectar com o servidor.", "error");
+                }
+            },
+            handleAuthentication() {
+                onAuthStateChanged(AppState.auth, async (user) => {
+                    if (user) {
+                        AppState.user = user;
+                        document.getElementById('user-id-display').textContent = user.uid;
+                        this.loadUserData();
                     } else {
-                        updateWorkoutDisplay(this.value);
+                        try {
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                await signInWithCustomToken(AppState.auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(AppState.auth);
+                            }
+                        } catch (error) {
+                            console.error("Authentication Error:", error);
+                        }
+                    }
+                });
+            },
+            async loadUserData() {
+                if (!AppState.user || !AppState.appId) return;
+                const userDocRef = doc(AppState.db, "artifacts", AppState.appId, "users", AppState.user.uid);
+                if (AppState.unsubscribe) AppState.unsubscribe();
+                AppState.unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        AppState.userData = docSnap.data();
+                    } else {
+                        this.createInitialUserData(userDocRef);
+                    }
+                    UI.render();
+                    UI.hideLoading();
+                });
+            },
+            async createInitialUserData(userDocRef) {
+                const initialData = {
+                    createdAt: new Date().toISOString(),
+                    workoutPlan: this.getInitialWorkoutPlan(),
+                    dietPlan: this.getInitialDietPlan(),
+                    progressHistory: { weight: [], volume: [] },
+                    personalRecords: {}
+                };
+                await setDoc(userDocRef, initialData);
+                AppState.userData = initialData;
+                UI.render();
+                UI.showModal('welcome-modal');
+            },
+            async saveData() {
+                if (!AppState.user || !AppState.appId) return;
+                const userDocRef = doc(AppState.db, "artifacts", AppState.appId, "users", AppState.user.uid);
+                await setDoc(userDocRef, AppState.userData, { merge: true });
+            },
+            getInitialWorkoutPlan() {
+                const createLogs = (count) => Array.from({ length: count }, () => ({ w: 0, r: 0 }));
+                return [
+                    { id: 'A', name: 'Upper A', focus: 'Peito, Ombros, Tríceps', exercises: [
+                        { id: 'ex1', name: 'Supino Reto', sets: 4, reps: '6-10', done: false, log: createLogs(4) },
+                        { id: 'ex2', name: 'Desenvolvimento c/ Halteres', sets: 4, reps: '8-12', done: false, log: createLogs(4) },
+                        { id: 'ex3', name: 'Tríceps Testa', sets: 3, reps: '10-15', done: false, log: createLogs(3) },
+                    ]},
+                    { id: 'B', name: 'Lower A', focus: 'Quadríceps, Glúteos', exercises: [
+                        { id: 'ex4', name: 'Agachamento Livre', sets: 4, reps: '6-10', done: false, log: createLogs(4) },
+                        { id: 'ex5', name: 'Leg Press 45', sets: 4, reps: '8-12', done: false, log: createLogs(4) },
+                        { id: 'ex6', name: 'Cadeira Extensora', sets: 3, reps: '12-15', done: false, log: createLogs(3) },
+                    ]},
+                    { id: 'C', name: 'Descanso Ativo', focus: 'Core e Cardio Leve', exercises: [
+                        { id: 'ex7', name: 'Prancha', sets: 3, reps: '60s', done: false, log: createLogs(3) },
+                        { id: 'ex8', name: 'Elevação de Pernas', sets: 3, reps: '15-20', done: false, log: createLogs(3) },
+                    ]},
+                    { id: 'D', name: 'Upper B', focus: 'Costas, Bíceps', exercises: [
+                        { id: 'ex9', name: 'Remada Curvada', sets: 4, reps: '6-10', done: false, log: createLogs(4) },
+                        { id: 'ex10', name: 'Puxada Frontal', sets: 4, reps: '8-12', done: false, log: createLogs(4) },
+                        { id: 'ex11', name: 'Rosca Direta', sets: 3, reps: '10-12', done: false, log: createLogs(3) },
+                    ]},
+                    { id: 'E', name: 'Lower B', focus: 'Posterior, Glúteos', exercises: [
+                        { id: 'ex12', name: 'Levantamento Terra Romeno', sets: 4, reps: '8-12', done: false, log: createLogs(4) },
+                        { id: 'ex13', name: 'Mesa Flexora', sets: 4, reps: '10-15', done: false, log: createLogs(4) },
+                        { id: 'ex14', name: 'Elevação Pélvica', sets: 3, reps: '12-15', done: false, log: createLogs(3) },
+                    ]},
+                ];
+            },
+            getInitialDietPlan() {
+                return [
+                    { id: 'meal1', name: 'Pequeno-Almoço', time: '08:00', items: ['Ovos mexidos com espinafres', '1 fatia de pão integral', '1/2 Abacate'] },
+                    { id: 'meal2', name: 'Lanche da Manhã', time: '11:00', items: ['Iogurte Grego', 'Punhado de amêndoas'] },
+                    { id: 'meal3', name: 'Almoço', time: '13:30', items: ['150g Peito de Frango Grelhado', '100g Batata Doce', 'Salada mista com azeite'] },
+                    { id: 'meal4', name: 'Lanche da Tarde', time: '16:30', items: ['1 Maçã', 'Pasta de Amendoim'] },
+                    { id: 'meal5', name: 'Jantar', time: '20:00', items: ['150g Salmão Grelhado', 'Brócolos cozidos a vapor'] },
+                ];
+            }
+        };
+
+        const UI = {
+            render() {
+                if (!AppState.userData) return;
+                this.renderWorkoutPlan();
+                this.renderDietPlan();
+                this.renderCharts();
+                this.switchTab('treino');
+            },
+            renderWorkoutPlan() {
+                const container = document.getElementById('workout-plan-container');
+                if (!container || !AppState.userData.workoutPlan) return;
+                container.innerHTML = AppState.userData.workoutPlan.map(day => this.createDayCardHTML(day)).join('');
+                this.attachWorkoutEventListeners();
+            },
+             renderDietPlan() {
+                const container = document.getElementById('diet-plan-container');
+                if (!container || !AppState.userData.dietPlan) return;
+                container.innerHTML = AppState.userData.dietPlan.map(meal => `
+                    <div class="bg-dark-200 rounded-lg p-4 card-hover">
+                        <h3 class="text-lg font-bold text-primary">${meal.name} <span class="text-sm text-gray-400 font-normal">- ${meal.time}</span></h3>
+                        <ul class="list-disc list-inside mt-2 text-gray-300">
+                            ${meal.items.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+            },
+            createDayCardHTML(day) {
+                const isToday = this.getSuggestedWorkoutId() === day.id;
+                return `<div id="day-card-${day.id}" class="bg-dark-200 rounded-lg overflow-hidden card-hover ${isToday ? 'border-2 border-primary' : ''}">
+                        <button onclick="UI.toggleAccordion('day-${day.id}')" class="w-full p-4 text-left flex justify-between items-center hover:bg-dark-300 transition-colors">
+                            <div><h3 class="text-xl font-bold text-primary">💪 Dia ${day.id} — ${day.name}</h3><p class="text-gray-400">${day.focus}</p></div>
+                            <span id="arrow-day-${day.id}" class="text-2xl transition-transform duration-300">▼</span>
+                        </button>
+                        <div id="content-day-${day.id}" class="accordion-content">
+                            <div class="p-4 border-t border-dark-400 space-y-4">
+                                ${day.exercises.map(ex => this.createExerciseHTML(ex, day.id)).join('')}
+                                <button onclick="Workout.finishWorkout('${day.id}')" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Finalizar Treino</button>
+                            </div></div></div>`;
+            },
+            createExerciseHTML(exercise, dayId) {
+                const pr = AppState.userData.personalRecords[exercise.id];
+                return `<div class="bg-dark-300 p-3 rounded-lg" data-day-id="${dayId}" data-exercise-id="${exercise.id}">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" class="form-checkbox h-5 w-5 bg-dark-400 border-gray-500 text-primary focus:ring-primary" ${exercise.done ? 'checked' : ''}>
+                                <span class="font-semibold">${exercise.name} (${exercise.sets}x${exercise.reps})</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${pr ? `<span class="pr-badge text-yellow-400 text-xs font-bold">🏆 PR: ${pr.w}kg x ${pr.r} reps</span>` : ''}
+                                <button onclick="AICoach.openModal('substitute', '${exercise.name}')" class="text-xs bg-blue-600 hover:bg-blue-700 p-1 rounded" title="Substituir Exercício">🔄</button>
+                                <button onclick="AICoach.openModal('technique', '${exercise.name}')" class="text-xs bg-purple-600 hover:bg-purple-700 p-1 rounded" title="Dicas de Técnica">💡</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-sm"><span class="text-gray-400">Série</span><span class="text-gray-400">Peso (kg)</span><span class="text-gray-400">Reps</span></div>
+                        ${exercise.log.map((log, index) => `<div class="grid grid-cols-3 gap-2 items-center mt-2">
+                                <span class="text-center font-medium">${index + 1}</span>
+                                <input type="number" value="${log.w}" class="w-full bg-dark-400 rounded p-1 text-center" placeholder="kg">
+                                <input type="number" value="${log.r}" class="w-full bg-dark-400 rounded p-1 text-center" placeholder="reps"></div>`).join('')}
+                    </div>`;
+            },
+            renderCharts() {
+                if (!AppState.userData.progressHistory) return;
+                const commonOptions = (title) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: title, color: '#e5e7eb', font: { size: 16 } } }, scales: { x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(156, 163, 175, 0.1)' } }, y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(156, 163, 175, 0.1)' } } } });
+                const weightCtx = document.getElementById('weight-chart')?.getContext('2d');
+                if (weightCtx) {
+                    const weightHistory = AppState.userData.progressHistory.weight || [];
+                    if (AppState.charts.weightChart) AppState.charts.weightChart.destroy();
+                    AppState.charts.weightChart = new Chart(weightCtx, { type: 'line', data: { labels: weightHistory.map(d => new Date(d.date).toLocaleDateString('pt-PT')), datasets: [{ label: 'Peso (kg)', data: weightHistory.map(d => d.value), borderColor: 'var(--color-primary)', backgroundColor: 'var(--color-primary-hover)', tension: 0.2, fill: false }] }, options: commonOptions('Evolução do Peso (kg)') });
+                }
+                const volumeCtx = document.getElementById('volume-chart')?.getContext('2d');
+                if(volumeCtx) {
+                    const volumeHistory = AppState.userData.progressHistory.volume || [];
+                    if (AppState.charts.volumeChart) AppState.charts.volumeChart.destroy();
+                    AppState.charts.volumeChart = new Chart(volumeCtx, { type: 'bar', data: { labels: volumeHistory.map(d => new Date(d.date).toLocaleDateString('pt-PT')), datasets: [{ label: 'Volume (kg)', data: volumeHistory.map(d => d.value), borderColor: 'var(--color-secondary)', backgroundColor: 'var(--color-secondary)', }] }, options: commonOptions('Volume Total por Sessão (kg)') });
+                }
+            },
+            attachWorkoutEventListeners() {
+                const container = document.getElementById('workout-plan-container');
+                container.addEventListener('input', (event) => {
+                    const target = event.target;
+                    const exerciseElement = target.closest('[data-exercise-id]');
+                    if (exerciseElement && target.type === 'number') Workout.updateLogFromUI(exerciseElement.dataset.dayId, exerciseElement.dataset.exerciseId);
+                });
+                container.addEventListener('change', (event) => {
+                    const target = event.target;
+                    const exerciseElement = target.closest('[data-exercise-id]');
+                    if (exerciseElement && target.type === 'checkbox') Workout.updateLogFromUI(exerciseElement.dataset.dayId, exerciseElement.dataset.exerciseId);
+                });
+            },
+            getSuggestedWorkoutId() {
+                const schedule = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'A', 0: 'B' };
+                return schedule[new Date().getDay()];
+            },
+            toggleAccordion(id) {
+                const content = document.getElementById(`content-${id}`);
+                const arrow = document.getElementById(`arrow-${id}`);
+                if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+                    content.style.maxHeight = '0px';
+                    if (arrow) arrow.style.transform = 'rotate(0deg)';
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    if (arrow) arrow.style.transform = 'rotate(180deg)';
+                }
+            },
+            showNotification(message, type = 'info') {
+                const container = document.getElementById('notification-container');
+                const notif = document.createElement('div');
+                const colors = { info: 'bg-blue-600', success: 'bg-green-600', error: 'bg-red-600' };
+                notif.className = `p-4 rounded-lg text-white font-semibold shadow-lg transform translate-x-full transition-transform duration-300 ${colors[type]}`;
+                notif.textContent = message;
+                container.appendChild(notif);
+                setTimeout(() => notif.classList.remove('translate-x-full'), 10);
+                setTimeout(() => {
+                    notif.classList.add('translate-x-full');
+                    setTimeout(() => notif.remove(), 300);
+                }, 4000);
+            },
+            switchTab(tabName) {
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('tab-active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                document.getElementById(`tab-${tabName}`)?.classList.add('tab-active');
+                document.getElementById(`content-${tabName}`)?.classList.remove('hidden');
+                if (tabName === 'progresso') this.renderCharts();
+            },
+            showLoading() { document.getElementById('loading-overlay').classList.add('flex'); document.getElementById('loading-overlay').classList.remove('hidden'); },
+            hideLoading() { document.getElementById('loading-overlay').classList.add('hidden'); document.getElementById('loading-overlay').classList.remove('flex'); },
+            showModal(id) { document.getElementById(id).classList.add('flex'); document.getElementById(id).classList.remove('hidden'); },
+            closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+        };
+
+        const Workout = {
+            updateLogFromUI(dayId, exerciseId) {
+                const day = AppState.userData.workoutPlan.find(d => d.id === dayId);
+                const exercise = day?.exercises.find(e => e.id === exerciseId);
+                const el = document.querySelector(`[data-day-id="${dayId}"][data-exercise-id="${exerciseId}"]`);
+                if (!exercise || !el) return;
+                exercise.done = el.querySelector('input[type="checkbox"]').checked;
+                const inputs = el.querySelectorAll('input[type="number"]');
+                exercise.log = Array.from({ length: inputs.length / 2 }, (_, i) => ({
+                    w: parseFloat(inputs[i * 2].value) || 0,
+                    r: parseInt(inputs[i * 2 + 1].value) || 0
+                }));
+            },
+            finishWorkout(dayId) {
+                UI.showNotification("A guardar o seu progresso...", "info");
+                const day = AppState.userData.workoutPlan.find(d => d.id === dayId);
+                day.exercises.forEach(ex => this.updateLogFromUI(dayId, ex.id));
+                this.checkPersonalRecords(dayId);
+                this.updateProgressHistory(dayId);
+                Data.saveData().then(() => UI.showNotification(`Treino do dia ${dayId} guardado!`, 'success'));
+            },
+            saveWeight() {
+                const weightInput = document.getElementById('weight-input');
+                const newWeight = parseFloat(weightInput.value);
+                if (isNaN(newWeight) || newWeight <= 0) {
+                    UI.showNotification("Por favor, insira um peso válido.", "error");
+                    return;
+                }
+                const today = new Date().toISOString().split('T')[0];
+                const weightHistory = AppState.userData.progressHistory.weight || [];
+                const existingIndex = weightHistory.findIndex(entry => entry.date === today);
+                if (existingIndex > -1) {
+                    weightHistory[existingIndex].value = newWeight;
+                } else {
+                    weightHistory.push({ date: today, value: newWeight });
+                }
+                AppState.userData.progressHistory.weight = weightHistory.sort((a,b) => new Date(a.date) - new Date(b.date));
+                Data.saveData().then(() => {
+                    UI.showNotification("Peso guardado com sucesso!", "success");
+                    UI.renderCharts();
+                });
+            },
+            updateProgressHistory(dayId) {
+                const today = new Date().toISOString().split('T')[0];
+                const day = AppState.userData.workoutPlan.find(d => d.id === dayId);
+                const totalVolume = day.exercises.reduce((total, ex) => total + ex.log.reduce((exTotal, set) => exTotal + (set.w * set.r), 0), 0);
+                const volumeHistory = AppState.userData.progressHistory.volume || [];
+                const existingIndex = volumeHistory.findIndex(v => v.date === today);
+                if (existingIndex > -1) {
+                    volumeHistory[existingIndex].value = totalVolume;
+                } else {
+                    volumeHistory.push({ date: today, value: totalVolume });
+                }
+                AppState.userData.progressHistory.volume = volumeHistory.sort((a,b) => new Date(a.date) - new Date(b.date));
+            },
+            checkPersonalRecords(dayId) {
+                const day = AppState.userData.workoutPlan.find(d => d.id === dayId);
+                day.exercises.forEach(exercise => {
+                    const currentPR = AppState.userData.personalRecords[exercise.id] || { w: 0, r: 0 };
+                    let newPRFound = false;
+                    exercise.log.forEach(set => {
+                        if (set.w > currentPR.w) {
+                            AppState.userData.personalRecords[exercise.id] = { w: set.w, r: set.r };
+                            newPRFound = true;
+                        }
+                    });
+                    if (newPRFound) {
+                        UI.showNotification(`🏆 Novo Recorde Pessoal em ${exercise.name}!`, 'success');
                     }
                 });
             }
-        }
+        };
 
-        function updateWorkoutSuggestion() {
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 = Domingo, 1 = Segunda, etc.
-            
-            const workoutSchedule = {
-                1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'rest', 0: 'rest'
-            };
-            
-            const suggestedWorkout = workoutSchedule[dayOfWeek];
-            updateWorkoutDisplay(suggestedWorkout);
-            
-            const daySelector = document.getElementById('day-selector');
-            if (daySelector) {
-                daySelector.value = 'auto';
-            }
-        }
-
-        function updateWorkoutDisplay(workoutType) {
-            const workoutText = document.getElementById('suggested-workout-text');
-            const workoutNames = {
-                'A': '💪 Upper A - Peito, Ombros, Tríceps + HIIT',
-                'B': '🦵 Lower A - Quadríceps, Glúteos + LISS',
-                'C': '🔄 Core/Recuperação - Cardio leve + Core',
-                'D': '🏋️‍♀️ Upper B - Costas, Bíceps + Cardio',
-                'E': '🍑 Lower B - Glúteos, Posterior + LISS',
-                'rest': '🛌 Descanso - Mobilidade ou OFF'
-            };
-            
-            if (workoutText) {
-                workoutText.textContent = workoutNames[workoutType] || 'Treino não definido';
-            }
-        }
-
-        function toggleAccordion(id) {
-            const content = document.getElementById(`content-${id}`);
-            const arrow = document.getElementById(`arrow-${id}`);
-            
-            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
-                content.style.maxHeight = '0px';
-                if (arrow) arrow.style.transform = 'rotate(0deg)';
-            } else {
-                content.style.maxHeight = content.scrollHeight + "px";
-                if (arrow) arrow.style.transform = 'rotate(180deg)';
-            }
-        }
-
-        function recordWorkoutSession(dayLetter) {
-            const sessions = JSON.parse(localStorage.getItem('workoutSessions') || '[]');
-            const today = new Date();
-            
-            const session = {
-                date: today.toISOString().split('T')[0],
-                day: dayLetter,
-                duration: sessionElapsedTime,
-                timestamp: today.getTime()
-            };
-            
-            sessions.push(session);
-            localStorage.setItem('workoutSessions', JSON.stringify(sessions));
-        }
-
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg text-white font-semibold transition-all duration-300 transform translate-x-full`;
-            
-            if (type === 'success') notification.classList.add('bg-green-600');
-            else if (type === 'error') notification.classList.add('bg-red-600');
-            else notification.classList.add('bg-blue-600');
-            
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => { notification.classList.remove('translate-x-full'); }, 100);
-            
-            setTimeout(() => {
-                notification.classList.add('translate-x-full');
-                setTimeout(() => { notification.remove(); }, 300);
-            }, 3000);
-        }
-
-        // Funções da Aba Treinos (Estatísticas)
-        function initWorkoutStats() {
-            generateWeeklyChart();
-            generateSessionHistory();
-            updateStatsCards('week');
-        }
-
-        function filterStats(period) {
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-primary', 'text-black');
-                btn.classList.add('bg-dark-300', 'text-white');
-            });
-            
-            document.getElementById(`filter-${period}`).classList.add('bg-primary', 'text-black');
-            document.getElementById(`filter-${period}`).classList.remove('bg-dark-300', 'text-white');
-            
-            updateStatsCards(period);
-        }
-
-        function updateStatsCards(period) {
-            const sessions = JSON.parse(localStorage.getItem('workoutSessions') || '[]');
-            const now = new Date();
-            let filteredSessions = sessions;
-            
-            if (period === 'week') {
-                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                filteredSessions = sessions.filter(s => new Date(s.date) >= weekAgo);
-            } else if (period === 'month') {
-                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                filteredSessions = sessions.filter(s => new Date(s.date) >= monthAgo);
-            } else if (period === 'year') {
-                const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-                filteredSessions = sessions.filter(s => new Date(s.date) >= yearAgo);
-            }
-            
-            const totalSessions = filteredSessions.length;
-            const totalTime = filteredSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
-            const avgDuration = totalSessions > 0 ? totalTime / totalSessions : 0;
-            
-            document.getElementById('total-sessions').textContent = totalSessions;
-            document.getElementById('total-time').textContent = formatTime(totalTime);
-            document.getElementById('avg-duration').textContent = formatTime(avgDuration);
-        }
-
-        function generateWeeklyChart() {
-            const chartContainer = document.getElementById('weekly-chart');
-            const weeklyData = [
-                { week: 'Sem 1', count: 4 }, { week: 'Sem 2', count: 5 }, { week: 'Sem 3', count: 3 },
-                { week: 'Sem 4', count: 6 }, { week: 'Sem 5', count: 4 }, { week: 'Sem 6', count: 5 },
-                { week: 'Sem 7', count: 4 }
-            ];
-            
-            const maxCount = Math.max(...weeklyData.map(d => d.count), 1);
-            
-            chartContainer.innerHTML = weeklyData.map(data => `
-                <div class="flex flex-col items-center flex-1">
-                    <div class="bg-primary rounded-t" style="height: ${(data.count / maxCount) * 180}px; width: 30px; min-height: 10px;"></div>
-                    <div class="text-xs text-gray-400 mt-2">${data.week}</div>
-                    <div class="text-xs font-bold text-primary">${data.count}</div>
-                </div>
-            `).join('');
-        }
-
-        function generateSessionHistory() {
-            const historyContainer = document.getElementById('session-history');
-            const recentSessions = [
-                { date: '2025-07-04', day: 'A', duration: 5400, exercises: 6 }, { date: '2025-07-02', day: 'B', duration: 4800, exercises: 6 },
-                { date: '2025-06-30', day: 'D', duration: 5100, exercises: 6 }, { date: '2025-06-28', day: 'E', duration: 4500, exercises: 6 },
-                { date: '2025-06-26', day: 'A', duration: 5200, exercises: 6 }
-            ];
-            
-            historyContainer.innerHTML = recentSessions.map(session => `
-                <div class="bg-dark-300 rounded-lg p-3 flex justify-between items-center">
-                    <div>
-                        <div class="font-semibold text-primary">Dia ${session.day} - ${getWorkoutName(session.day)}</div>
-                        <div class="text-sm text-gray-400">${formatDate(session.date)} • ${session.exercises} exercícios</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold text-secondary">${formatTime(session.duration)}</div>
-                        <div class="text-xs text-gray-400">duração</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function getWorkoutName(day) {
-            const names = {'A': 'Upper A', 'B': 'Lower A', 'C': 'Core', 'D': 'Upper B', 'E': 'Lower B'};
-            return names[day] || 'Treino';
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-        }
-
-        function formatTime(totalSeconds) {
-            if (isNaN(totalSeconds) || totalSeconds < 0) return '00:00';
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = Math.floor(totalSeconds % 60);
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        // Funções da Aba Corpo
-        function initBodyProgress() {
-            loadBodyData();
-            generateWeightChart();
-            updateProgressMetrics();
-        }
-
-        function adjustWeight(change) {
-            const weightInput = document.getElementById('current-weight-corpo');
-            const currentWeight = parseFloat(weightInput.value) || 0;
-            const newWeight = Math.max(0, currentWeight + change);
-            weightInput.value = newWeight.toFixed(1);
-        }
-
-        function saveWeight() {
-            const weight = parseFloat(document.getElementById('current-weight-corpo').value);
-            if (!isNaN(weight) && weight > 0) {
-                const today = new Date().toISOString().split('T')[0];
-                let weightHistory = JSON.parse(localStorage.getItem('weightHistory') || '[]');
+        const AICoach = {
+            currentContext: null,
+            openModal(context, data = '') {
+                this.currentContext = context;
+                const titleEl = document.getElementById('gemini-modal-title');
+                const contentEl = document.getElementById('gemini-modal-content');
+                const responseEl = document.getElementById('gemini-modal-response');
+                responseEl.classList.add('hidden');
                 
-                const existingIndex = weightHistory.findIndex(entry => entry.date === today);
-                if (existingIndex >= 0) weightHistory[existingIndex].weight = weight;
-                else weightHistory.push({ date: today, weight: weight });
-                
-                weightHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-                if (weightHistory.length > 30) weightHistory.splice(0, weightHistory.length - 30);
-                
-                localStorage.setItem('weightHistory', JSON.stringify(weightHistory));
-                localStorage.setItem('currentWeight', weight.toString());
-                
-                showNotification('Peso salvo com sucesso!', 'success');
-                generateWeightChart();
-                updateProgressMetrics();
-            }
-        }
+                let title = '', contentHTML = '', btnText = 'Gerar';
+                const textArea = (placeholder) => `<textarea id="gemini-input" class="w-full bg-dark-300 text-white rounded-lg p-3 h-28 border-2 border-transparent focus:border-gemini outline-none" placeholder="${placeholder}"></textarea>`;
 
-        function saveWaistMeasurement() { /* ... */ }
-        function saveBodyFat() { /* ... */ }
-        function saveWeightGoal() { /* ... */ }
-
-        function calculateIMC() {
-            const height = parseFloat(document.getElementById('height-input-corpo').value);
-            const weight = parseFloat(document.getElementById('current-weight-corpo').value);
-            
-            if (height && weight && height > 0 && weight > 0) {
-                const imc = weight / ((height / 100) ** 2);
-                const resultDiv = document.getElementById('imc-result-corpo');
-                document.getElementById('imc-value-corpo').textContent = imc.toFixed(1);
-                
-                let category = '', colorClass = '';
-                if (imc < 18.5) { category = 'Abaixo do peso'; colorClass = 'text-blue-400'; }
-                else if (imc < 25) { category = 'Peso normal'; colorClass = 'text-green-400'; }
-                else if (imc < 30) { category = 'Sobrepeso'; colorClass = 'text-yellow-400'; }
-                else { category = 'Obesidade'; colorClass = 'text-red-400'; }
-                
-                const categoryDiv = document.getElementById('imc-category-corpo');
-                categoryDiv.textContent = category;
-                categoryDiv.className = `text-sm ${colorClass}`;
-                resultDiv.classList.remove('hidden');
-                localStorage.setItem('height', height.toString());
-            }
-        }
-
-        function generateWeightChart() {
-            const chartContainer = document.getElementById('weight-chart');
-            let weightHistory = JSON.parse(localStorage.getItem('weightHistory') || '[]');
-            
-            if (weightHistory.length === 0) {
-                weightHistory = [
-                    { date: '2025-06-01', weight: 78.2 }, { date: '2025-06-08', weight: 77.8 },
-                    { date: '2025-06-15', weight: 77.1 }, { date: '2025-06-22', weight: 76.5 },
-                    { date: '2025-06-29', weight: 76.0 }, { date: '2025-07-04', weight: 75.5 }
-                ];
-            }
-            
-            const weights = weightHistory.map(d => d.weight);
-            const maxWeight = Math.max(...weights);
-            const minWeight = Math.min(...weights);
-            const range = maxWeight - minWeight || 1;
-            
-            chartContainer.innerHTML = weightHistory.map(data => `
-                <div class="flex flex-col items-center flex-1">
-                    <div class="bg-secondary rounded-t" style="height: ${((data.weight - minWeight) / range) * 180 + 20}px; width: 20px;"></div>
-                    <div class="text-xs text-gray-400 mt-2 transform -rotate-45">${formatDate(data.date)}</div>
-                    <div class="text-xs font-bold text-secondary">${data.weight.toFixed(1)}kg</div>
-                </div>
-            `).join('');
-        }
-
-        function updateProgressMetrics() { /* ... */ }
-        function loadBodyData() { /* ... */ }
-
-        // Cronômetros
-        function startSessionTimer() {
-            if (sessionPaused) {
-                sessionStartTime = Date.now() - sessionElapsedTime;
-            } else {
-                sessionStartTime = Date.now();
-                sessionElapsedTime = 0;
-            }
-            if (!sessionTimerInterval) {
-                sessionTimerInterval = setInterval(updateSessionTimer, 1000);
-            }
-            sessionPaused = false;
-        }
-
-        function pauseSessionTimer() {
-            if (sessionTimerInterval) {
-                clearInterval(sessionTimerInterval);
-                sessionTimerInterval = null;
-                sessionElapsedTime = Date.now() - sessionStartTime;
-                sessionPaused = true;
-            }
-        }
-
-        function resetSessionTimer() {
-            clearInterval(sessionTimerInterval);
-            sessionTimerInterval = null;
-            sessionElapsedTime = 0;
-            sessionPaused = false;
-            document.getElementById('session-timer').textContent = '00:00:00';
-        }
-
-        function updateSessionTimer() {
-            const elapsed = Date.now() - sessionStartTime;
-            sessionElapsedTime = elapsed;
-            document.getElementById('session-timer').textContent = formatTime(Math.floor(elapsed / 1000));
-        }
-
-        function startRestTimer(seconds) {
-            stopRestTimer();
-            restEndTime = Date.now() + seconds * 1000;
-            document.getElementById('rest-timer').classList.remove('hidden');
-            
-            restTimerInterval = setInterval(() => {
-                const remaining = restEndTime - Date.now();
-                if (remaining <= 0) {
-                    stopRestTimer();
-                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                    alert('⏰ Descanso finalizado!');
-                    return;
+                switch(context) {
+                    case 'generate-plan':
+                        title = '✨ Gerar Novo Plano de Treino';
+                        contentHTML = `<p class="text-gray-400 mb-2">Descreva os seus objetivos, quantos dias por semana pode treinar e qualquer outra preferência.</p>${textArea('Ex: Quero focar em hipertrofia, 5 dias por semana, com ênfase em pernas.')}`;
+                        break;
+                    case 'analyze-meal':
+                        title = '🥗 Analisar Refeição';
+                        contentHTML = `<p class="text-gray-400 mb-2">Descreva os alimentos e quantidades da sua refeição para receber uma análise nutricional.</p>${textArea('Ex: 150g de salmão, 100g de arroz branco e uma salada de alface com tomate.')}`;
+                        btnText = 'Analisar';
+                        break;
+                    case 'substitute':
+                        title = `🔄 Substituir ${data}`;
+                        contentHTML = `<p class="text-gray-400 mb-2">A IA irá sugerir 3 alternativas para <strong>${data}</strong>. Pode adicionar mais detalhes (ex: equipamento indisponível, dor no ombro).</p>${textArea('Ex: O aparelho está ocupado.')}`;
+                        btnText = 'Sugerir';
+                        break;
+                    case 'technique':
+                        title = `💡 Dicas de Técnica para ${data}`;
+                        contentHTML = `<p class="text-gray-400 mb-2">A IA irá gerar dicas de execução e erros comuns para <strong>${data}</strong>.</p>`;
+                        btnText = 'Obter Dicas';
+                        break;
                 }
-                const mins = Math.floor((remaining / 1000) / 60);
-                const secs = Math.floor((remaining / 1000) % 60);
-                document.getElementById('rest-time').textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            }, 500);
-        }
+                titleEl.textContent = title;
+                contentEl.innerHTML = contentHTML;
+                document.getElementById('gemini-btn-text').textContent = btnText;
+                document.getElementById('gemini-modal-action-btn').onclick = () => this.processRequest(data);
+                UI.showModal('gemini-modal');
+            },
+            async processRequest(data) {
+                const inputEl = document.getElementById('gemini-input');
+                const userInput = inputEl ? inputEl.value : '';
+                let prompt = '';
 
-        function stopRestTimer() {
-            clearInterval(restTimerInterval);
-            restTimerInterval = null;
-            document.getElementById('rest-timer').classList.add('hidden');
-        }
-
-        // Funções do Modal IA
-        function openAIModal(context) {
-            currentAIContext = context;
-            const modal = document.getElementById('ai-modal');
-            const title = document.getElementById('modal-title');
-            const content = document.getElementById('modal-content');
-            document.getElementById('modal-response').classList.add('hidden');
-            
-            const baseInputHTML = (placeholder) => `<textarea id="ai-input" class="w-full bg-dark-300 text-white rounded-lg p-3 h-24 border-2 border-transparent focus:border-primary outline-none" placeholder="${placeholder}"></textarea>`;
-            
-            const contentMap = {
-                'criar-treino': { title: '🤖 Criar/Atualizar Treino', html: `<p class="text-gray-400 mb-4">Descreva seus objetivos, limitações e preferências:</p>${baseInputHTML('Ex: Foco em hipertrofia, 4x na semana, tenho dor no ombro...')}`},
-                'otimizar-treino': { title: '⚡ Otimizar Treino', html: `<p class="text-gray-400 mb-4">Como se sente hoje? Descreva sua energia e estado físico:</p>${baseInputHTML('Ex: Dormi mal, estou com pouca energia, sinto o posterior cansado...')}`},
-                'substituir-exercicio': { title: '🔄 Substituir Exercício', html: `<p class="text-gray-400 mb-4">Qual exercício quer substituir e por quê?</p>${baseInputHTML('Ex: O aparelho de supino está ocupado, qual a melhor alternativa?')}`},
-                'dicas-tecnicas': { title: '💡 Dicas Técnicas', html: `<p class="text-gray-400 mb-4">Sobre qual exercício quer dicas de execução?</p>${baseInputHTML('Ex: Como fazer remada curvada sem forçar a lombar?')}`},
-                'analisar-refeicao': { title: '🔍 Analisar Refeição', html: `<p class="text-gray-400 mb-4">Descreva sua refeição para análise:</p>${baseInputHTML('Ex: 150g de frango, 200g de arroz, salada e 1 colher de azeite.')}`},
-                'gerar-receitas': { title: '👨‍🍳 Gerar Receitas', html: `<p class="text-gray-400 mb-4">Quais ingredientes você tem?</p>${baseInputHTML('Ex: Ovos, aveia, banana, whey protein, pasta de amendoim.')}`},
-                'adaptacoes-alimentares': { title: '⚡ Adaptações na Dieta', html: `<p class="text-gray-400 mb-4">Qual seu objetivo?</p><textarea id="ai-input" class="w-full bg-dark-300 text-white rounded-lg p-3 h-24 border-2 border-transparent focus:border-primary outline-none" placeholder="Ex: Preciso de uma opção de lanche rápido e proteico para a tarde."></textarea>`}
-            };
-
-            if (contentMap[context]) {
-                title.textContent = contentMap[context].title;
-                content.innerHTML = contentMap[context].html;
+                switch(this.currentContext) {
+                    case 'generate-plan':
+                        prompt = `Aja como um personal trainer especialista. Crie um plano de treino de musculação com base no seguinte pedido do utilizador: "${userInput}". O plano deve ser estruturado e realista. Responda APENAS com um objeto JSON válido, sem qualquer texto ou formatação extra. O JSON deve seguir este schema: { "workoutPlan": [{ "id": "A", "name": "Nome do Treino", "focus": "Músculos Focados", "exercises": [{ "id": "ex_unico_1", "name": "Nome do Exercício", "sets": 4, "reps": "8-12" }] }] }. Garanta que os "id" dos exercícios sejam únicos (ex: ex1, ex2, etc.).`;
+                        break;
+                    case 'analyze-meal':
+                        prompt = `Aja como um nutricionista. Analise a seguinte refeição descrita pelo utilizador: "${userInput}". Forneça uma estimativa de calorias, proteínas, carboidratos e gorduras. Dê também uma breve opinião sobre a qualidade da refeição e uma sugestão de melhoria, se aplicável.`;
+                        break;
+                    case 'substitute':
+                        prompt = `Aja como um personal trainer. Sugira 3 exercícios alternativos para "${data}". O utilizador adicionou o seguinte contexto: "${userInput}". Para cada alternativa, explique brevemente o porquê da sugestão.`;
+                        break;
+                    case 'technique':
+                        prompt = `Aja como um personal trainer. Forneça dicas de técnica detalhadas para o exercício "${data}". Organize a resposta em "Execução Passo a Passo" e "Erros Comuns a Evitar".`;
+                        break;
+                }
+                
+                const responseText = await Gemini.generate(prompt, this.currentContext === 'generate-plan');
+                
+                if (this.currentContext === 'generate-plan' && responseText) {
+                    try {
+                        const parsed = JSON.parse(responseText);
+                        if (parsed.workoutPlan) {
+                            const createLogs = (count) => Array.from({ length: count }, () => ({ w: 0, r: 0 }));
+                            parsed.workoutPlan.forEach(day => {
+                                day.exercises.forEach(ex => {
+                                    ex.done = false;
+                                    ex.log = createLogs(ex.sets);
+                                });
+                            });
+                            AppState.userData.workoutPlan = parsed.workoutPlan;
+                            await Data.saveData();
+                            UI.renderWorkoutPlan();
+                            UI.closeModal('gemini-modal');
+                            UI.showNotification("Novo plano de treino gerado e guardado!", "success");
+                        } else { throw new Error("JSON inválido recebido."); }
+                    } catch (e) {
+                        console.error("JSON Parsing Error:", e);
+                        UI.showNotification("Erro ao processar o plano de treino da IA.", "error");
+                    }
+                } else if (responseText) {
+                    const responseEl = document.getElementById('gemini-modal-response');
+                    document.getElementById('gemini-response-text').textContent = responseText;
+                    responseEl.classList.remove('hidden');
+                }
             }
-            modal.classList.remove('hidden');
-        }
+        };
 
-        function closeAIModal() { document.getElementById('ai-modal').classList.add('hidden'); }
+        const Gemini = {
+            async generate(prompt, isJson = false) {
+                const btnText = document.getElementById('gemini-btn-text');
+                const btnLoading = document.getElementById('gemini-btn-loading');
+                btnText.classList.add('hidden');
+                btnLoading.classList.remove('hidden');
 
-        async function processAIRequest() {
-            const input = document.getElementById('ai-input');
-            const btnText = document.getElementById('btn-text');
-            const btnLoading = document.getElementById('btn-loading');
-            
-            if (!input || !input.value.trim()) { alert('⚠️ Por favor, preencha o campo.'); return; }
-            
-            btnText.textContent = 'Processando...';
-            btnLoading.classList.remove('hidden');
-            
-            try {
-                // Simulação de chamada de API
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                const aiResponse = `Esta é uma resposta simulada para: "${input.value}". A IA analisou sua solicitação e sugere focar em consistência e técnica.`;
-                document.getElementById('ai-response-text').textContent = aiResponse;
-                document.getElementById('modal-response').classList.remove('hidden');
-            } catch (error) {
-                document.getElementById('ai-response-text').textContent = 'Erro ao processar. Tente novamente.';
-                document.getElementById('modal-response').classList.remove('hidden');
-            } finally {
-                btnText.textContent = 'Processar';
-                btnLoading.classList.add('hidden');
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                };
+
+                if (isJson) {
+                    payload.generationConfig = {
+                        responseMimeType: "application/json",
+                    };
+                }
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const errorBody = await response.json();
+                        throw new Error(`API Error: ${response.statusText} - ${errorBody.error.message}`);
+                    }
+                    const result = await response.json();
+                    if (!result.candidates || !result.candidates[0].content.parts[0].text) {
+                        throw new Error("Resposta da API inválida.");
+                    }
+                    return result.candidates[0].content.parts[0].text;
+                } catch (error) {
+                    console.error("Gemini API Error:", error);
+                    UI.showNotification("Erro ao comunicar com a IA.", "error");
+                    return null;
+                } finally {
+                    btnText.classList.remove('hidden');
+                    btnLoading.classList.add('hidden');
+                }
             }
-        }
-
-        // Funções do Chat de Cores
-        function openColorChat() { document.getElementById('color-chat-modal').classList.remove('hidden'); }
-        function closeColorChat() { document.getElementById('color-chat-modal').classList.add('hidden'); }
-
-        function changeThemeColors(primary, secondary) {
-            document.documentElement.style.setProperty('--color-primary', primary);
-            document.documentElement.style.setProperty('--color-secondary', secondary);
-            localStorage.setItem('themePrimary', primary);
-            localStorage.setItem('themeSecondary', secondary);
-            updateElementColors(primary, secondary);
-            closeColorChat();
-        }
-
-        function applyCustomColors() {
-            const primary = document.getElementById('primary-color').value;
-            const secondary = document.getElementById('secondary-color').value;
-            changeThemeColors(primary, secondary);
-        }
-
-        function updateElementColors(primary, secondary) {
-            // Este é um método simplificado. O ideal é usar variáveis CSS.
-            // Para tailwind, a melhor forma é redefinir `tailwind.config` e recarregar,
-            // ou usar variáveis CSS como já está sendo feito.
-            // A estilização `tab-active` precisa ser atualizada dinamicamente.
-            const styleSheet = document.createElement("style");
-            styleSheet.innerText = `
-                .text-primary { color: ${primary}; }
-                .bg-primary { background-color: ${primary}; }
-                .border-primary { border-color: ${primary}; }
-                .text-secondary { color: ${secondary}; }
-                .tab-active { color: ${primary} !important; border-bottom-color: ${primary} !important; }
-                .filter-btn.active { background-color: ${primary} !important; color: black !important; }
-            `;
-            document.head.appendChild(styleSheet);
-        }
-
-        function loadSavedColors() {
-            const primary = localStorage.getItem('themePrimary') || '#FFA500';
-            const secondary = localStorage.getItem('themeSecondary') || '#FFD700';
-            document.getElementById('primary-color').value = primary;
-            document.getElementById('secondary-color').value = secondary;
-            updateElementColors(primary, secondary);
-        }
+        };
         
-        // CORREÇÃO PRINCIPAL: Adiciona o Event Listener para carregar o JS
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSavedColors();
-            switchTab('treino'); // Garante que a primeira aba seja carregada corretamente
+        const sessionTimer = {
+            interval: null, startTime: null, elapsedTime: 0,
+            start() { if (this.interval) return; this.startTime = Date.now() - this.elapsedTime; this.interval = setInterval(this.update.bind(this), 1000); },
+            pause() { if (!this.interval) return; clearInterval(this.interval); this.interval = null; this.elapsedTime = Date.now() - this.startTime; },
+            reset() { if (this.interval) clearInterval(this.interval); this.interval = null; this.startTime = null; this.elapsedTime = 0; document.getElementById('session-timer').textContent = '00:00:00'; },
+            update() {
+                const elapsed = Date.now() - this.startTime;
+                const h = Math.floor(elapsed / 3600000).toString().padStart(2, '0');
+                const m = Math.floor((elapsed % 3600000) / 60000).toString().padStart(2, '0');
+                const s = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
+                document.getElementById('session-timer').textContent = `${h}:${m}:${s}`;
+            }
+        };
+
+        window.UI = UI;
+        window.Workout = Workout;
+        window.AICoach = AICoach;
+        window.sessionTimer = sessionTimer;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            UI.showLoading();
+            Data.init();
         });
     </script>
 </body>
