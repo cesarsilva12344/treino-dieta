@@ -104,9 +104,12 @@
         <!-- Aba Dieta -->
         <div id="content-dieta" class="tab-content hidden">
             <h2 class="text-3xl font-bold mb-6 text-center text-primary">🥗 Plano Alimentar</h2>
-            <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center">
-                 <button onclick="AICoach.openModal('analyze-meal')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg mb-4 transition-colors">
-                    🥗 Analisar Refeição com IA
+            <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center space-y-4">
+                 <button onclick="AICoach.openModal('generate-diet')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg transition-colors">
+                    ✨ Gerar Novo Plano Alimentar com IA
+                </button>
+                 <button onclick="AICoach.openModal('analyze-meal')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors">
+                    🥗 Analisar Refeição Individual
                 </button>
             </div>
             <div id="diet-plan-container" class="space-y-4">
@@ -131,6 +134,11 @@
         <!-- Aba Progresso -->
         <div id="content-progresso" class="tab-content hidden">
             <h2 class="text-3xl font-bold mb-6 text-center text-primary">📈 O seu Progresso</h2>
+            <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center">
+                 <button onclick="AICoach.openModal('weekly-summary')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg transition-colors">
+                    ✨ Gerar Resumo da Semana com IA
+                </button>
+            </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-dark-200 p-4 rounded-lg card-hover">
                     <h3 class="text-xl font-bold text-secondary mb-4">⚖️ Histórico de Peso</h3>
@@ -515,10 +523,19 @@
                         title = '✨ Gerar Novo Plano de Treino';
                         contentHTML = `<p class="text-gray-400 mb-2">Descreva os seus objetivos, quantos dias por semana pode treinar e qualquer outra preferência.</p>${textArea('Ex: Quero focar em hipertrofia, 5 dias por semana, com ênfase em pernas.')}`;
                         break;
+                    case 'generate-diet':
+                        title = '✨ Gerar Novo Plano Alimentar';
+                        contentHTML = `<p class="text-gray-400 mb-2">Descreva os seus objetivos (ex: perder peso, ganhar massa), restrições (ex: sem lactose) e comidas preferidas.</p>${textArea('Ex: Objetivo de ganhar massa magra, sem glúten, gosto de frango e batata doce.')}`;
+                        break;
                     case 'analyze-meal':
                         title = '🥗 Analisar Refeição';
                         contentHTML = `<p class="text-gray-400 mb-2">Descreva os alimentos e quantidades da sua refeição para receber uma análise nutricional.</p>${textArea('Ex: 150g de salmão, 100g de arroz branco e uma salada de alface com tomate.')}`;
                         btnText = 'Analisar';
+                        break;
+                    case 'weekly-summary':
+                        title = '📊 Resumo da Semana com IA';
+                        contentHTML = `<p class="text-gray-400 mb-2">A IA irá analisar o seu progresso de volume e recordes da última semana para lhe dar um feedback motivacional.</p>`;
+                        btnText = 'Analisar Semana';
                         break;
                     case 'substitute':
                         title = `🔄 Substituir ${data}`;
@@ -546,8 +563,16 @@
                     case 'generate-plan':
                         prompt = `Aja como um personal trainer especialista. Crie um plano de treino de musculação com base no seguinte pedido do utilizador: "${userInput}". O plano deve ser estruturado e realista. Responda APENAS com um objeto JSON válido, sem qualquer texto ou formatação extra. O JSON deve seguir este schema: { "workoutPlan": [{ "id": "A", "name": "Nome do Treino", "focus": "Músculos Focados", "exercises": [{ "id": "ex_unico_1", "name": "Nome do Exercício", "sets": 4, "reps": "8-12" }] }] }. Garanta que os "id" dos exercícios sejam únicos (ex: ex1, ex2, etc.).`;
                         break;
+                    case 'generate-diet':
+                         prompt = `Aja como um nutricionista desportivo. Crie um plano alimentar com base no seguinte pedido do utilizador: "${userInput}". O plano deve ser estruturado e realista, com 5 a 6 refeições. Responda APENAS com um objeto JSON válido, sem qualquer texto ou formatação extra. O JSON deve seguir este schema: { "dietPlan": [{ "id": "meal1", "name": "Pequeno-Almoço", "time": "08:00", "items": ["Item 1", "Item 2"] }] }.`;
+                        break;
                     case 'analyze-meal':
                         prompt = `Aja como um nutricionista. Analise a seguinte refeição descrita pelo utilizador: "${userInput}". Forneça uma estimativa de calorias, proteínas, carboidratos e gorduras. Dê também uma breve opinião sobre a qualidade da refeição e uma sugestão de melhoria, se aplicável.`;
+                        break;
+                    case 'weekly-summary':
+                        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                        const weeklyVolume = AppState.userData.progressHistory.volume.filter(v => v.date >= oneWeekAgo);
+                        prompt = `Aja como um coach de fitness motivacional. Analise os dados de progresso da última semana do utilizador: ${JSON.stringify(weeklyVolume)}. Forneça um resumo conciso e motivador. Destaque uma vitória (ex: consistência, aumento de volume) e sugira um pequeno foco para a próxima semana. Mantenha o tom positivo e encorajador.`;
                         break;
                     case 'substitute':
                         prompt = `Aja como um personal trainer. Sugira 3 exercícios alternativos para "${data}". O utilizador adicionou o seguinte contexto: "${userInput}". Para cada alternativa, explique brevemente o porquê da sugestão.`;
@@ -557,28 +582,30 @@
                         break;
                 }
                 
-                const responseText = await Gemini.generate(prompt, this.currentContext === 'generate-plan');
+                const isJson = this.currentContext === 'generate-plan' || this.currentContext === 'generate-diet';
+                const responseText = await Gemini.generate(prompt, isJson);
                 
-                if (this.currentContext === 'generate-plan' && responseText) {
+                if (isJson && responseText) {
                     try {
                         const parsed = JSON.parse(responseText);
                         if (parsed.workoutPlan) {
                             const createLogs = (count) => Array.from({ length: count }, () => ({ w: 0, r: 0 }));
-                            parsed.workoutPlan.forEach(day => {
-                                day.exercises.forEach(ex => {
-                                    ex.done = false;
-                                    ex.log = createLogs(ex.sets);
-                                });
-                            });
+                            parsed.workoutPlan.forEach(day => day.exercises.forEach(ex => { ex.done = false; ex.log = createLogs(ex.sets); }));
                             AppState.userData.workoutPlan = parsed.workoutPlan;
-                            await Data.saveData();
-                            UI.renderWorkoutPlan();
-                            UI.closeModal('gemini-modal');
                             UI.showNotification("Novo plano de treino gerado e guardado!", "success");
-                        } else { throw new Error("JSON inválido recebido."); }
+                            UI.renderWorkoutPlan();
+                        } else if (parsed.dietPlan) {
+                            AppState.userData.dietPlan = parsed.dietPlan;
+                            UI.showNotification("Novo plano alimentar gerado e guardado!", "success");
+                            UI.renderDietPlan();
+                        } else { throw new Error("JSON com formato inesperado."); }
+                        
+                        await Data.saveData();
+                        UI.closeModal('gemini-modal');
+
                     } catch (e) {
                         console.error("JSON Parsing Error:", e);
-                        UI.showNotification("Erro ao processar o plano de treino da IA.", "error");
+                        UI.showNotification("Erro ao processar a resposta da IA.", "error");
                     }
                 } else if (responseText) {
                     const responseEl = document.getElementById('gemini-modal-response');
