@@ -196,24 +196,16 @@
                     const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
                     const firebaseConfig = JSON.parse(firebaseConfigString);
                     AppState.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-                    // *** CORREÇÃO: Verifica se a chave da API está presente e exibe uma mensagem de erro clara se não estiver. ***
-                    if (!firebaseConfig.apiKey) {
-                        UI.hideLoading();
-                        document.body.innerHTML = `<div class="h-screen flex flex-col items-center justify-center text-center p-8 bg-dark-100 text-white">
-                                                      <h1 class="text-2xl font-bold text-red-500 mb-4">Erro de Configuração</h1>
-                                                      <p class="max-w-md">A aplicação não conseguiu conectar-se à base de dados porque as credenciais do Firebase não foram fornecidas. Por favor, certifique-se de que a aplicação está a ser executada num ambiente configurado corretamente.</p>
-                                                  </div>`;
-                        return;
-                    }
-
+                    
+                    // A verificação de segurança foi removida daqui, conforme solicitado.
+                    
                     const app = initializeApp(firebaseConfig);
                     AppState.auth = getAuth(app);
                     AppState.db = getFirestore(app);
                     this.handleAuthentication();
                 } catch (error) {
                     console.error("Firebase Init Error:", error);
-                    UI.showNotification("Erro ao conectar com o servidor.", "error");
+                    UI.showNotification("Erro ao conectar com o servidor. Verifique as credenciais.", "error");
                     UI.hideLoading();
                 }
             },
@@ -249,9 +241,9 @@
                     UI.render();
                     UI.hideLoading();
                 }, (error) => {
-                     console.error("Error listening to user data:", error);
-                     UI.showNotification("Erro ao carregar dados. Verifique as permissões.", "error");
-                     UI.hideLoading();
+                    console.error("Error listening to user data:", error);
+                    UI.showNotification("Erro ao carregar dados. Verifique as permissões da base de dados.", "error");
+                    UI.hideLoading();
                 });
             },
             async createInitialUserData(userDocRef) {
