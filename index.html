@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Treino Avançado com IA</title>
+    <title>Controle de Treino Avançado</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -18,10 +18,6 @@
                         },
                         secondary: {
                             DEFAULT: 'var(--color-secondary, #FFD700)',
-                        },
-                        gemini: {
-                            DEFAULT: '#4285F4',
-                            hover: '#63a0ff',
                         },
                         dark: {
                             100: '#121212',
@@ -53,12 +49,6 @@
 </head>
 <body class="bg-dark-100 text-gray-200 min-h-screen">
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-dark-100 bg-opacity-90 flex flex-col items-center justify-center z-[100]">
-        <div class="loading-spinner !w-16 !h-16 !border-4"></div>
-        <p class="mt-4 text-lg text-gray-300">A carregar os seus dados...</p>
-    </div>
-
     <!-- Header -->
     <header class="bg-dark-200 shadow-lg sticky top-0 z-40">
         <div class="container mx-auto px-4 py-3">
@@ -84,9 +74,6 @@
         <!-- Aba Treino -->
         <div id="content-treino" class="tab-content">
             <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center">
-                 <button onclick="AICoach.openModal('generate-plan')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg mb-4 transition-colors">
-                    ✨ Gerar Novo Plano de Treino com IA
-                </button>
                 <h3 class="text-lg font-bold text-primary mb-3">⏱️ Cronómetro da Sessão</h3>
                 <div id="session-timer" class="text-4xl font-bold text-secondary mb-4 timer-display">00:00:00</div>
                 <div class="flex justify-center space-x-4">
@@ -104,14 +91,6 @@
         <!-- Aba Dieta -->
         <div id="content-dieta" class="tab-content hidden">
             <h2 class="text-3xl font-bold mb-6 text-center text-primary">🥗 Plano Alimentar</h2>
-            <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center space-y-4">
-                 <button onclick="AICoach.openModal('generate-diet')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg transition-colors">
-                    ✨ Gerar Novo Plano Alimentar com IA
-                </button>
-                 <button onclick="AICoach.openModal('analyze-meal')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors">
-                    🥗 Analisar Refeição Individual
-                </button>
-            </div>
             <div id="diet-plan-container" class="space-y-4">
                  <!-- O plano de dieta será renderizado aqui -->
             </div>
@@ -134,11 +113,6 @@
         <!-- Aba Progresso -->
         <div id="content-progresso" class="tab-content hidden">
             <h2 class="text-3xl font-bold mb-6 text-center text-primary">📈 O seu Progresso</h2>
-            <div class="bg-dark-200 rounded-lg p-4 mb-6 text-center">
-                 <button onclick="AICoach.openModal('weekly-summary')" class="w-full bg-gemini hover:bg-gemini-hover text-white font-bold py-3 rounded-lg transition-colors">
-                    ✨ Gerar Resumo da Semana com IA
-                </button>
-            </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-dark-200 p-4 rounded-lg card-hover">
                     <h3 class="text-xl font-bold text-secondary mb-4">⚖️ Histórico de Peso</h3>
@@ -151,118 +125,38 @@
             </div>
         </div>
     </main>
-
-    <!-- Modals -->
-    <div id="welcome-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
-        <div class="bg-dark-200 rounded-lg p-6 max-w-lg w-full mx-4 text-center">
-            <h2 class="text-2xl font-bold text-primary mb-4">Bem-vindo(a) ao FitTrack Pro!</h2>
-            <p class="text-gray-300 mb-6">O seu progresso será guardado automaticamente. O seu ID de utilizador é: <br><strong id="user-id-display" class="text-secondary text-sm break-all"></strong></p>
-            <button onclick="UI.closeModal('welcome-modal')" class="bg-primary hover:bg-primary-hover text-black font-semibold px-6 py-2 rounded-lg transition-colors">Começar!</button>
-        </div>
-    </div>
-
-    <div id="gemini-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
-        <div class="bg-dark-200 rounded-lg p-6 max-w-2xl w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="gemini-modal-title" class="text-xl font-bold text-gemini"></h3>
-                <button onclick="UI.closeModal('gemini-modal')" class="text-gray-400 hover:text-white text-2xl">×</button>
-            </div>
-            <div id="gemini-modal-content"></div>
-            <div id="gemini-modal-response" class="mt-4 p-4 bg-dark-300 rounded-lg max-h-64 overflow-y-auto hidden">
-                 <div id="gemini-response-text" class="text-gray-300 whitespace-pre-wrap"></div>
-            </div>
-            <div class="flex justify-end mt-6">
-                <button id="gemini-modal-action-btn" class="bg-gemini hover:bg-gemini-hover text-white font-semibold px-6 py-2 rounded-lg transition-colors flex items-center gap-2">
-                    <span id="gemini-btn-text">Processar</span>
-                    <div id="gemini-btn-loading" class="loading-spinner !border-t-white hidden"></div>
-                </button>
-            </div>
-        </div>
-    </div>
     
+    <!-- Notification Container -->
     <div id="notification-container" class="fixed bottom-5 right-5 z-[99] space-y-3"></div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const AppState = { user: null, db: null, auth: null, appId: null, userData: null, unsubscribe: null, charts: { weightChart: null, volumeChart: null } };
+    <script>
+        const AppState = { 
+            userData: null, 
+            charts: { weightChart: null, volumeChart: null } 
+        };
 
         const Data = {
-            async init() {
-                try {
-                    const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-                    const firebaseConfig = JSON.parse(firebaseConfigString);
-                    AppState.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    
-                    // A verificação de segurança foi removida daqui, conforme solicitado.
-                    
-                    const app = initializeApp(firebaseConfig);
-                    AppState.auth = getAuth(app);
-                    AppState.db = getFirestore(app);
-                    this.handleAuthentication();
-                } catch (error) {
-                    console.error("Firebase Init Error:", error);
-                    UI.showNotification("Erro ao conectar com o servidor. Verifique as credenciais.", "error");
-                    UI.hideLoading();
+            init() {
+                this.loadDataFromLocalStorage();
+                UI.render();
+            },
+            loadDataFromLocalStorage() {
+                const savedData = localStorage.getItem('fitTrackProData');
+                if (savedData) {
+                    AppState.userData = JSON.parse(savedData);
+                } else {
+                    AppState.userData = {
+                        createdAt: new Date().toISOString(),
+                        workoutPlan: this.getInitialWorkoutPlan(),
+                        dietPlan: this.getInitialDietPlan(),
+                        progressHistory: { weight: [], volume: [] },
+                        personalRecords: {}
+                    };
+                    this.saveDataToLocalStorage();
                 }
             },
-            handleAuthentication() {
-                onAuthStateChanged(AppState.auth, async (user) => {
-                    if (user) {
-                        AppState.user = user;
-                        document.getElementById('user-id-display').textContent = user.uid;
-                        this.loadUserData();
-                    } else {
-                        try {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                await signInWithCustomToken(AppState.auth, __initial_auth_token);
-                            } else {
-                                await signInAnonymously(AppState.auth);
-                            }
-                        } catch (error) {
-                            console.error("Authentication Error:", error);
-                        }
-                    }
-                });
-            },
-            async loadUserData() {
-                if (!AppState.user || !AppState.appId) return;
-                const userDocRef = doc(AppState.db, "artifacts", AppState.appId, "users", AppState.user.uid);
-                if (AppState.unsubscribe) AppState.unsubscribe();
-                AppState.unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        AppState.userData = docSnap.data();
-                    } else {
-                        this.createInitialUserData(userDocRef);
-                    }
-                    UI.render();
-                    UI.hideLoading();
-                }, (error) => {
-                    console.error("Error listening to user data:", error);
-                    UI.showNotification("Erro ao carregar dados. Verifique as permissões da base de dados.", "error");
-                    UI.hideLoading();
-                });
-            },
-            async createInitialUserData(userDocRef) {
-                const initialData = {
-                    createdAt: new Date().toISOString(),
-                    workoutPlan: this.getInitialWorkoutPlan(),
-                    dietPlan: this.getInitialDietPlan(),
-                    progressHistory: { weight: [], volume: [] },
-                    personalRecords: {}
-                };
-                await setDoc(userDocRef, initialData);
-                AppState.userData = initialData;
-                UI.render();
-                UI.showModal('welcome-modal');
-            },
-            async saveData() {
-                if (!AppState.user || !AppState.appId) return;
-                const userDocRef = doc(AppState.db, "artifacts", AppState.appId, "users", AppState.user.uid);
-                await setDoc(userDocRef, AppState.userData, { merge: true });
+            saveDataToLocalStorage() {
+                localStorage.setItem('fitTrackProData', JSON.stringify(AppState.userData));
             },
             getInitialWorkoutPlan() {
                 const createLogs = (count) => Array.from({ length: count }, () => ({ w: 0, r: 0 }));
@@ -353,8 +247,6 @@
                             </div>
                             <div class="flex items-center gap-2">
                                 ${pr ? `<span class="pr-badge text-yellow-400 text-xs font-bold">🏆 PR: ${pr.w}kg x ${pr.r} reps</span>` : ''}
-                                <button onclick="AICoach.openModal('substitute', '${exercise.name}')" class="text-xs bg-blue-600 hover:bg-blue-700 p-1 rounded" title="Substituir Exercício">🔄</button>
-                                <button onclick="AICoach.openModal('technique', '${exercise.name}')" class="text-xs bg-purple-600 hover:bg-purple-700 p-1 rounded" title="Dicas de Técnica">💡</button>
                             </div>
                         </div>
                         <div class="grid grid-cols-3 gap-2 text-center text-sm"><span class="text-gray-400">Série</span><span class="text-gray-400">Peso (kg)</span><span class="text-gray-400">Reps</span></div>
@@ -427,11 +319,7 @@
                 document.getElementById(`tab-${tabName}`)?.classList.add('tab-active');
                 document.getElementById(`content-${tabName}`)?.classList.remove('hidden');
                 if (tabName === 'progresso') this.renderCharts();
-            },
-            showLoading() { document.getElementById('loading-overlay').classList.add('flex'); document.getElementById('loading-overlay').classList.remove('hidden'); },
-            hideLoading() { document.getElementById('loading-overlay').classList.add('hidden'); document.getElementById('loading-overlay').classList.remove('flex'); },
-            showModal(id) { document.getElementById(id).classList.add('flex'); document.getElementById(id).classList.remove('hidden'); },
-            closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+            }
         };
 
         const Workout = {
@@ -453,7 +341,8 @@
                 day.exercises.forEach(ex => this.updateLogFromUI(dayId, ex.id));
                 this.checkPersonalRecords(dayId);
                 this.updateProgressHistory(dayId);
-                Data.saveData().then(() => UI.showNotification(`Treino do dia ${dayId} guardado!`, 'success'));
+                Data.saveDataToLocalStorage();
+                UI.showNotification(`Treino do dia ${dayId} guardado!`, 'success');
             },
             saveWeight() {
                 const weightInput = document.getElementById('weight-input');
@@ -471,10 +360,9 @@
                     weightHistory.push({ date: today, value: newWeight });
                 }
                 AppState.userData.progressHistory.weight = weightHistory.sort((a,b) => new Date(a.date) - new Date(b.date));
-                Data.saveData().then(() => {
-                    UI.showNotification("Peso guardado com sucesso!", "success");
-                    UI.renderCharts();
-                });
+                Data.saveDataToLocalStorage();
+                UI.showNotification("Peso guardado com sucesso!", "success");
+                UI.renderCharts();
             },
             updateProgressHistory(dayId) {
                 const today = new Date().toISOString().split('T')[0];
@@ -506,161 +394,6 @@
                 });
             }
         };
-
-        const AICoach = {
-            currentContext: null,
-            openModal(context, data = '') {
-                this.currentContext = context;
-                const titleEl = document.getElementById('gemini-modal-title');
-                const contentEl = document.getElementById('gemini-modal-content');
-                const responseEl = document.getElementById('gemini-modal-response');
-                responseEl.classList.add('hidden');
-                
-                let title = '', contentHTML = '', btnText = 'Gerar';
-                const textArea = (placeholder) => `<textarea id="gemini-input" class="w-full bg-dark-300 text-white rounded-lg p-3 h-28 border-2 border-transparent focus:border-gemini outline-none" placeholder="${placeholder}"></textarea>`;
-
-                switch(context) {
-                    case 'generate-plan':
-                        title = '✨ Gerar Novo Plano de Treino';
-                        contentHTML = `<p class="text-gray-400 mb-2">Descreva os seus objetivos, quantos dias por semana pode treinar e qualquer outra preferência.</p>${textArea('Ex: Quero focar em hipertrofia, 5 dias por semana, com ênfase em pernas.')}`;
-                        break;
-                    case 'generate-diet':
-                        title = '✨ Gerar Novo Plano Alimentar';
-                        contentHTML = `<p class="text-gray-400 mb-2">Descreva os seus objetivos (ex: perder peso, ganhar massa), restrições (ex: sem lactose) e comidas preferidas.</p>${textArea('Ex: Objetivo de ganhar massa magra, sem glúten, gosto de frango e batata doce.')}`;
-                        break;
-                    case 'analyze-meal':
-                        title = '🥗 Analisar Refeição';
-                        contentHTML = `<p class="text-gray-400 mb-2">Descreva os alimentos e quantidades da sua refeição para receber uma análise nutricional.</p>${textArea('Ex: 150g de salmão, 100g de arroz branco e uma salada de alface com tomate.')}`;
-                        btnText = 'Analisar';
-                        break;
-                    case 'weekly-summary':
-                        title = '📊 Resumo da Semana com IA';
-                        contentHTML = `<p class="text-gray-400 mb-2">A IA irá analisar o seu progresso de volume e recordes da última semana para lhe dar um feedback motivacional.</p>`;
-                        btnText = 'Analisar Semana';
-                        break;
-                    case 'substitute':
-                        title = `🔄 Substituir ${data}`;
-                        contentHTML = `<p class="text-gray-400 mb-2">A IA irá sugerir 3 alternativas para <strong>${data}</strong>. Pode adicionar mais detalhes (ex: equipamento indisponível, dor no ombro).</p>${textArea('Ex: O aparelho está ocupado.')}`;
-                        btnText = 'Sugerir';
-                        break;
-                    case 'technique':
-                        title = `💡 Dicas de Técnica para ${data}`;
-                        contentHTML = `<p class="text-gray-400 mb-2">A IA irá gerar dicas de execução e erros comuns para <strong>${data}</strong>.</p>`;
-                        btnText = 'Obter Dicas';
-                        break;
-                }
-                titleEl.textContent = title;
-                contentEl.innerHTML = contentHTML;
-                document.getElementById('gemini-btn-text').textContent = btnText;
-                document.getElementById('gemini-modal-action-btn').onclick = () => this.processRequest(data);
-                UI.showModal('gemini-modal');
-            },
-            async processRequest(data) {
-                const inputEl = document.getElementById('gemini-input');
-                const userInput = inputEl ? inputEl.value : '';
-                let prompt = '';
-
-                switch(this.currentContext) {
-                    case 'generate-plan':
-                        prompt = `Aja como um personal trainer especialista. Crie um plano de treino de musculação com base no seguinte pedido do utilizador: "${userInput}". O plano deve ser estruturado e realista. Responda APENAS com um objeto JSON válido, sem qualquer texto ou formatação extra. O JSON deve seguir este schema: { "workoutPlan": [{ "id": "A", "name": "Nome do Treino", "focus": "Músculos Focados", "exercises": [{ "id": "ex_unico_1", "name": "Nome do Exercício", "sets": 4, "reps": "8-12" }] }] }. Garanta que os "id" dos exercícios sejam únicos (ex: ex1, ex2, etc.).`;
-                        break;
-                    case 'generate-diet':
-                         prompt = `Aja como um nutricionista desportivo. Crie um plano alimentar com base no seguinte pedido do utilizador: "${userInput}". O plano deve ser estruturado e realista, com 5 a 6 refeições. Responda APENAS com um objeto JSON válido, sem qualquer texto ou formatação extra. O JSON deve seguir este schema: { "dietPlan": [{ "id": "meal1", "name": "Pequeno-Almoço", "time": "08:00", "items": ["Item 1", "Item 2"] }] }.`;
-                        break;
-                    case 'analyze-meal':
-                        prompt = `Aja como um nutricionista. Analise a seguinte refeição descrita pelo utilizador: "${userInput}". Forneça uma estimativa de calorias, proteínas, carboidratos e gorduras. Dê também uma breve opinião sobre a qualidade da refeição e uma sugestão de melhoria, se aplicável.`;
-                        break;
-                    case 'weekly-summary':
-                        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-                        const weeklyVolume = AppState.userData.progressHistory.volume.filter(v => v.date >= oneWeekAgo);
-                        prompt = `Aja como um coach de fitness motivacional. Analise os dados de progresso da última semana do utilizador: ${JSON.stringify(weeklyVolume)}. Forneça um resumo conciso e motivador. Destaque uma vitória (ex: consistência, aumento de volume) e sugira um pequeno foco para a próxima semana. Mantenha o tom positivo e encorajador.`;
-                        break;
-                    case 'substitute':
-                        prompt = `Aja como um personal trainer. Sugira 3 exercícios alternativos para "${data}". O utilizador adicionou o seguinte contexto: "${userInput}". Para cada alternativa, explique brevemente o porquê da sugestão.`;
-                        break;
-                    case 'technique':
-                        prompt = `Aja como um personal trainer. Forneça dicas de técnica detalhadas para o exercício "${data}". Organize a resposta em "Execução Passo a Passo" e "Erros Comuns a Evitar".`;
-                        break;
-                }
-                
-                const isJson = this.currentContext === 'generate-plan' || this.currentContext === 'generate-diet';
-                const responseText = await Gemini.generate(prompt, isJson);
-                
-                if (isJson && responseText) {
-                    try {
-                        const parsed = JSON.parse(responseText);
-                        if (parsed.workoutPlan) {
-                            const createLogs = (count) => Array.from({ length: count }, () => ({ w: 0, r: 0 }));
-                            parsed.workoutPlan.forEach(day => day.exercises.forEach(ex => { ex.done = false; ex.log = createLogs(ex.sets); }));
-                            AppState.userData.workoutPlan = parsed.workoutPlan;
-                            UI.showNotification("Novo plano de treino gerado e guardado!", "success");
-                            UI.renderWorkoutPlan();
-                        } else if (parsed.dietPlan) {
-                            AppState.userData.dietPlan = parsed.dietPlan;
-                            UI.showNotification("Novo plano alimentar gerado e guardado!", "success");
-                            UI.renderDietPlan();
-                        } else { throw new Error("JSON com formato inesperado."); }
-                        
-                        await Data.saveData();
-                        UI.closeModal('gemini-modal');
-
-                    } catch (e) {
-                        console.error("JSON Parsing Error:", e);
-                        UI.showNotification("Erro ao processar a resposta da IA.", "error");
-                    }
-                } else if (responseText) {
-                    const responseEl = document.getElementById('gemini-modal-response');
-                    document.getElementById('gemini-response-text').textContent = responseText;
-                    responseEl.classList.remove('hidden');
-                }
-            }
-        };
-
-        const Gemini = {
-            async generate(prompt, isJson = false) {
-                const btnText = document.getElementById('gemini-btn-text');
-                const btnLoading = document.getElementById('gemini-btn-loading');
-                btnText.classList.add('hidden');
-                btnLoading.classList.remove('hidden');
-
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                
-                const payload = {
-                    contents: [{ role: "user", parts: [{ text: prompt }] }],
-                };
-
-                if (isJson) {
-                    payload.generationConfig = {
-                        responseMimeType: "application/json",
-                    };
-                }
-
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (!response.ok) {
-                        const errorBody = await response.json();
-                        throw new Error(`API Error: ${response.statusText} - ${errorBody.error.message}`);
-                    }
-                    const result = await response.json();
-                    if (!result.candidates || !result.candidates[0].content.parts[0].text) {
-                        throw new Error("Resposta da API inválida.");
-                    }
-                    return result.candidates[0].content.parts[0].text;
-                } catch (error) {
-                    console.error("Gemini API Error:", error);
-                    UI.showNotification("Erro ao comunicar com a IA.", "error");
-                    return null;
-                } finally {
-                    btnText.classList.remove('hidden');
-                    btnLoading.classList.add('hidden');
-                }
-            }
-        };
         
         const sessionTimer = {
             interval: null, startTime: null, elapsedTime: 0,
@@ -678,11 +411,9 @@
 
         window.UI = UI;
         window.Workout = Workout;
-        window.AICoach = AICoach;
         window.sessionTimer = sessionTimer;
 
         document.addEventListener('DOMContentLoaded', () => {
-            UI.showLoading();
             Data.init();
         });
     </script>
